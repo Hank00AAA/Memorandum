@@ -1,0 +1,2 @@
+# Memorandum
+My graduated design
