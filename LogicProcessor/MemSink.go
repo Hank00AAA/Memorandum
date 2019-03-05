@@ -1,8 +1,9 @@
 package LogicProcessor
 
 import (
+	"fmt"
 	"github.com/Hank00AAA/Memorandum/Common"
-	"github.com/mongodb/mongo-go-driver/bson"
+	"go.mongodb.org/mongo-driver/bson"
 	"gopkg.in/mgo.v2"
 )
 
@@ -36,13 +37,37 @@ func (memSink *MemSink)checkWithEmail_Password(email string, password string)(
 		return
 	}
 
-	if len()
+	fmt.Println(results)
+
+	if len(results) == 0{
+		//匹配失败
+		fmt.Println("匹配失败")
+		return "", false, nil
+	}else if len(results) >=1{
+		//匹配成功
+		if (len(results)<1){
+			fmt.Println("存在多条账户记录，请检查")
+		}
+
+		return results[0].UserID, true, nil
+	}
+
+	return "", false, nil
 
 }
 
-//登陆：根据这个人的Email获取个人清单列表
-func (memSink *MemSink)getPMListByUserID(userID string)(plist []Common.PMemList, err error){
+//登陆：根据这个人的userID获取个人清单列表
+func (memSink *MemSink)getPMListByUserID(userID string)(plist *[]Common.PMemList, err error){
 
+	var(
+		results []Common.PMemList
+	)
+
+	if err = G_memSink.MC_PMemList.Find(bson.M{"userid":userID}).All(&results);err!=nil{
+		return nil, err
+	}
+
+	return &results, nil
 }
 
 
@@ -110,6 +135,27 @@ func InitMemSink()(err error){
 	}
 
 	fmt.Println(result)
+*/
+
+/* test2
+	if err = pmemlist.Insert(&Common.PMemList{
+		ID: "1",
+		ListID:"1",
+		ListName:"test1",
+		UserID:"1",
+	});err!=nil{
+		fmt.Println(err)
+	}
+
+	if err = pmemlist.Insert(&Common.PMemList{
+		ID: "2",
+		ListID:"2",
+		ListName:"test2",
+		UserID:"1",
+	});err!=nil{
+		fmt.Println(err)
+	}
+
 */
 
 

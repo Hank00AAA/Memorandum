@@ -1,6 +1,8 @@
 package LogicProcessor
 
 import (
+	"fmt"
+	"github.com/Hank00AAA/Memorandum/Common"
 	"net"
 	"net/http"
 	"strconv"
@@ -27,10 +29,82 @@ func handleSignUp(resp http.ResponseWriter, req *http.Request){
 //{ errno: 0 data:[ {plistid: | pListName:  } ]}
 //3. 如果没有，返回
 //{ errno: -1 data:[nil] }
+//不知道为什么post方法得不出结果，改成get了
+//State: 测试完成
 func handleSignIn(resp http.ResponseWriter, req *http.Request){
 
+	var(
+		err error
+		email string
+		password string
+		userID string
+		isRight bool
+		respbytes []byte
+		plist *[]Common.PMemList
+		plist_temp Common.PMemList
+		plist_resp []Common.PList
+		temp Common.PList
 
+	)
 
+	plist_resp = make([]Common.PList, 0)
+
+	//解析表单
+	if err = req.ParseForm();err!=nil{
+		goto ERR
+	}
+
+	fmt.Println("get req")
+
+	email = req.Form.Get("email")
+	password = req.Form.Get("password")
+
+	fmt.Println(email)
+	fmt.Println(password)
+
+	//查询数据库：帐号密码是否对应
+	if userID, isRight, err = G_memSink.checkWithEmail_Password(email, password);err!=nil{
+		goto ERR
+	}
+
+	//帐号密码不对应
+	if isRight == false{
+		err = Common.ERR_NO_FOUND_ACCOUNT
+		goto ERR
+	}
+
+	//帐号存在，查询对应的个人清单
+	if userID == ""{
+		err = Common.ERR_ACCOUNT_IS_NIL
+		goto ERR
+	}
+
+	//查询个人清单
+	if plist, err = G_memSink.getPMListByUserID(userID);err!=nil{
+		goto ERR
+	}
+
+	//生成应答报文
+	fmt.Println(*plist)
+	for _, plist_temp = range *plist{
+		temp.PListID = plist_temp.ListID
+		temp.PListName = plist_temp.ListName
+		plist_resp = append(plist_resp, temp)
+		fmt.Println("finish",temp)
+	}
+
+	if respbytes, err = Common.BuildSignInResp(0, plist_resp);err==nil{
+		resp.Write(respbytes)
+	}
+
+	return
+
+	ERR:
+		fmt.Println(err)
+		//异常应答
+		if respbytes, err = Common.BuildSignInResp(-1, nil);err==nil{
+			resp.Write(respbytes)
+		}
 
 }
 

@@ -8,7 +8,8 @@ import "time"
 
 //用户表User
 type User struct{
-	ID   string    		`json:"_id"      bson:"_id"`  //mongodb唯一主键
+	ID   string    		`json:"_id"      bson:"_id"`
+	//mongodb唯一主键 ID = userID = Email
 	UserID string  		`json:"userid"   bson:"userid"`
 	Email  string 		`json:"email"    bson:"email"`
 	PassWord string 	`json:"password" bson:"password"`
@@ -16,7 +17,8 @@ type User struct{
 
 //个人清单列表
 type PMemList struct{
-	ID   string    		`json:"_id"      bson:"_id"`  //mongodb唯一主键
+	ID   string    		`json:"_id"      bson:"_id"`
+	//mongodb唯一主键 ID = ListID
 	ListID string `json:"listid" bson:"listid"`
 	ListName string `json:"listname" bson:"listname"`
 	UserID   string `json:"userid" bson:"userid"`
@@ -24,7 +26,8 @@ type PMemList struct{
 
 //条目
 type Entry struct{
-	ID   string    		`json:"_id"      bson:"_id"`  //mongodb唯一主键
+	ID   string    		`json:"_id"      bson:"_id"`
+	//mongodb唯一主键 ID = EntryID
 	EntryID string `json:"entryid" bson:"entryid"`
 	EntryName string  `json:"entryname" bson:"entryname"`
 	ListID   string `json:"listid" bson:"listid"`
@@ -34,7 +37,8 @@ type Entry struct{
 
 //步骤
 type Step struct{
-	ID   string    		`json:"_id"      bson:"_id"`  //mongodb唯一主键
+	ID   string    		`json:"_id"      bson:"_id"`
+	//mongodb唯一主键 ID = StepID
 	StepID string `json:"stepid" bson:"stepid"`
 	EntryID string `json:"entryid" bason:"entryid"`
 	Sequence int   `json:"sequence" bson:"sequence"`
@@ -47,7 +51,8 @@ type Step struct{
 
 //成员列表
 type TMemList struct{
-	ID   string    		`json:"_id"      bson:"_id"`  //mongodb唯一主键
+	ID   string    		`json:"_id"      bson:"_id"`
+	//mongodb唯一主键  ID = ListID + UserID
 	ListID string `json:"listid" bson:"listid"`
 	ListName string `json:"listname" bson:"listname"`
 	UserID   string `json:"userid" bson:"userid"`
