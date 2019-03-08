@@ -90,6 +90,25 @@ func BuildSearchByTagResp(errno int, data interface{})(resp []byte, err error){
 	return
 }
 
+//5. 查询个人备忘录清单
+type PListInfo struct{
+	PListID string
+	PListName string
+}
+
+func BuildGetPMemListResp(errno int, data interface{})(resp []byte, err error){
+	var(
+		response SearchByTagResp
+	)
+
+	response.Errno = errno
+	response.Data = data
+
+	//序列化
+	resp ,err = json.Marshal(response)
+	return
+}
+
 
 
 //文件上传接口应答

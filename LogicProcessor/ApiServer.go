@@ -201,6 +201,37 @@ func handleSearchByDate(resp http.ResponseWriter, req *http.Request){
 //5. 查询个人备忘录清单
 func handleGetPMemList(resp http.ResponseWriter, req *http.Request){
 
+	var(
+		err error
+		bytes []byte
+		email string
+		result *[]Common.PListInfo
+	)
+
+	//解析表单
+	if err = req.ParseForm();err!=nil{
+		goto ERR
+	}
+
+	email = req.Form.Get("email")
+	fmt.Println(email)
+
+	if result ,err = G_memSink.getPMemList(email);err!=nil{
+		goto ERR
+	}
+
+	if bytes, err = Common.BuildGetPMemListResp(0, result);err==nil{
+		resp.Write(bytes)
+	}
+
+	return
+
+	ERR:
+		if bytes, err = Common.BuildGetPMemListResp(-1, nil);err==nil{
+			fmt.Println(err)
+			resp.Write(bytes)
+		}
+
 }
 
 //6. 查询团队备忘录清单

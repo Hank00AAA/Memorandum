@@ -489,6 +489,31 @@ func (memSink *MemSink)getDateEntry(email string, date string)(searchArr *[]Comm
 
 }
 
+//5. 查询个人清单列表
+func (memSink *MemSink)getPMemList(email string)(Resps *[]Common.PListInfo, err error){
+
+	var(
+		pListInfo Common.PListInfo
+		pMemList_tmp Common.PMemList
+		pMemListResult []Common.PMemList
+		resp []Common.PListInfo
+	)
+
+	resp = make([]Common.PListInfo, 0)
+
+	if err = memSink.MC_PMemList.Find(bson.M{"userid":email}).All(&pMemListResult);err!=nil{
+		return nil, err
+	}
+
+	for _, pMemList_tmp = range pMemListResult{
+		pListInfo.PListName = pMemList_tmp.ListName
+		pListInfo.PListID   = pMemList_tmp.ListID
+		resp = append(resp, pListInfo)
+	}
+
+	return &resp, nil
+}
+
 
 func InitMemSink()(err error){
 
