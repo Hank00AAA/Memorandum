@@ -31,6 +31,7 @@ func handleSignUp(resp http.ResponseWriter, req *http.Request){
 //{ errno: -1 data:[nil] }
 //不知道为什么post方法得不出结果，改成get了
 //State: 测试完成
+//http://localhost:9000/signin?email=1222&password=4
 func handleSignIn(resp http.ResponseWriter, req *http.Request){
 
 	var(
@@ -109,12 +110,91 @@ func handleSignIn(resp http.ResponseWriter, req *http.Request){
 }
 
 //3. 根据标签查询条目
+//根据tag进行查询 0:今天 1:最近七天
+//根据查询结果返回
+//get方法
+//url:http://localhost:9000/searchByTag?email=111@qq.com&tag=1
 func handleSearchByTag(resp http.ResponseWriter, req *http.Request){
 
+	var(
+		err error
+		bytes []byte
+		tag string
+		email string
+		searchArr *[]Common.SearchRespData
+	)
+
+	//解析表单
+	if err = req.ParseForm();err!=nil{
+		goto ERR
+	}
+
+	//email   tag
+	email = req.Form.Get("email")
+	tag = req.Form.Get("tag")
+	fmt.Println("email:",email)
+	fmt.Println("tag",tag)
+
+	searchArr = nil
+	if tag == "0"{
+		if searchArr, err = G_memSink.getTodayEntry(email);err!=nil{
+			goto ERR
+		}
+	}else if tag == "1"{
+		if searchArr,err = G_memSink.getWeekEntry(email);err!=nil{
+			goto ERR
+		}
+	}
+
+	if bytes, err = Common.BuildSearchByTagResp(0, searchArr);err==nil{
+		resp.Write(bytes)
+	}
+
+	return
+
+	ERR:
+		if bytes, err = Common.BuildSearchByTagResp(-1, nil);err==nil{
+			fmt.Println(err)
+			resp.Write(bytes)
+		}
 }
 
 //4. 根据日期查询条目
+//state:finish
+//GET url: http://localhost:9000/searchByDate?email=111@qq.com&date=2019-03-08
 func handleSearchByDate(resp http.ResponseWriter, req *http.Request){
+
+	var(
+		err error
+		bytes []byte
+		email string
+		date string
+		searchArr *[]Common.SearchRespData
+	)
+
+	//解析表单
+	if err = req.ParseForm();err!=nil{
+		goto ERR
+	}
+
+	email = req.Form.Get("email")
+	date  = req.Form.Get("date")
+
+	if searchArr, err = G_memSink.getDateEntry(email, date);err!=nil{
+		goto ERR
+	}
+
+	if bytes, err = Common.BuildSearchByTagResp(0, searchArr);err==nil{
+		resp.Write(bytes)
+	}
+
+	return
+
+	ERR:
+		if bytes, err = Common.BuildSearchByTagResp(-1, nil);err==nil{
+			fmt.Println(err)
+			resp.Write(bytes)
+		}
 
 }
 

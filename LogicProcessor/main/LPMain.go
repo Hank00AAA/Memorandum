@@ -55,6 +55,9 @@ func main(){
 		goto ERR
 	}
 
+	//TEST INSERT
+	LogicProcessor.Insert_Data()
+
 
 
 

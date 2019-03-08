@@ -1,7 +1,5 @@
 package Common
 
-import "time"
-
 //标签字段全部小写
 // 查询的时候是用bson小写查询的
 //需要人为添加主键
@@ -43,7 +41,7 @@ type Step struct{
 	EntryID string `json:"entryid" bason:"entryid"`
 	Sequence int   `json:"sequence" bson:"sequence"`
 	StepName string `json:"stepname" bson:"stepname"`
-	Date    time.Time `json:"date" bson:"date"`
+	Date    string `json:"date" bson:"date"`
 	Importance int `json:"importance" bson:"importance"`
 	Done       int `json:"done" bson:"done"`
 	Content    string `json:"content" bson:"content"`

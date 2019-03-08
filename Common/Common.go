@@ -37,7 +37,7 @@ type SignInResp struct{
 	Data  interface{} `json:"data"`
 }
 
-func BuildSignInResp(errno int, listArr []PList)(resp []byte, err error){
+func BuildSignInResp(errno int, listArr interface{})(resp []byte, err error){
 
 	//1. 定义Resp
 	var(
@@ -55,6 +55,42 @@ func BuildSignInResp(errno int, listArr []PList)(resp []byte, err error){
 }
 
 //3. 根据标签查询条目应答
+type SearchByTagResp struct{
+	Errno int `json:"errno"`
+	Data interface{} `json:"data"`
+}
+
+type StepResp struct{
+	StepID string `json:"stepid"`
+	Date   string `json:"date"`
+	Importance int `json:"importance"`
+}
+
+type EntryResp struct{
+	EntryID string `json:"entryid"`
+	Entryname string `json:"entryname"`
+	Entryversion int `json:"entryversion"`
+}
+
+type SearchRespData struct{
+	Entryresp EntryResp
+	Stepresp  []StepResp
+}
+
+func BuildSearchByTagResp(errno int, data interface{})(resp []byte, err error){
+	var(
+		response SearchByTagResp
+	)
+
+	response.Errno = errno
+	response.Data = data
+
+	//序列化
+	resp ,err = json.Marshal(response)
+	return
+}
+
+
 
 //文件上传接口应答
 func BuildUploadFileResp(errno int, msg []string)(resp []byte, err error){
