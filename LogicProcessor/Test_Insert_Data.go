@@ -12,6 +12,7 @@ func Insert_Data()(err error){
 		pMmemList_id string = "PTL1"
 		pMemList_id_2 string = "PTL2"
 		tMemList_id string = "TML1"
+		tMemList_id_2 string = "TML2"
 		entryID string = "test_entry_1"
 		entryID_2 string = "test_entry_2"
 		outOfWeekEntry string = "test_out_of_week_entry"
@@ -197,6 +198,15 @@ func Insert_Data()(err error){
 		ID:tMemList_id,
 		ListID:tMemList_id,
 		ListName:"Test Tmemlist_1",
+		UserID:user_id,
+	});err!=nil{
+		fmt.Println(err)
+	}
+
+	if err = G_memSink.MC_TMemList.Insert(&Common.TMemList{
+		ID:tMemList_id_2,
+		ListID:tMemList_id_2,
+		ListName:"Test Tmemlist_2",
 		UserID:user_id,
 	});err!=nil{
 		fmt.Println(err)

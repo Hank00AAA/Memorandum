@@ -514,6 +514,31 @@ func (memSink *MemSink)getPMemList(email string)(Resps *[]Common.PListInfo, err 
 	return &resp, nil
 }
 
+//6. 查询团队清单列表
+func (memSink *MemSink)getTMemList(email string)(Resps *[]Common.TListInfo, err error){
+
+	var(
+		tListInfo Common.TListInfo
+		tMemList_tmp Common.TMemList
+		tMemListResult []Common.TMemList
+		resp []Common.TListInfo
+	)
+
+	resp = make([]Common.TListInfo, 0)
+
+	if err = memSink.MC_TMemList.Find(bson.M{"userid":email}).All(&tMemListResult);err!=nil{
+		return nil, err
+	}
+
+	for _, tMemList_tmp = range tMemListResult{
+		tListInfo.TListName = tMemList_tmp.ListName
+		tListInfo.TListID   = tMemList_tmp.ListID
+		resp = append(resp, tListInfo)
+	}
+
+	return &resp, nil
+}
+
 
 func InitMemSink()(err error){
 

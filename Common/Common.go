@@ -109,6 +109,29 @@ func BuildGetPMemListResp(errno int, data interface{})(resp []byte, err error){
 	return
 }
 
+//6. 查询团队备忘录清单
+type TListInfo struct{
+	TListID string
+	TListName string
+}
+
+type Resp struct{
+	Errno int
+	Data  interface{}
+}
+
+func BuildGetTMemListResp(errno int, data interface{})(resp []byte, err error){
+	var (
+		response Resp
+	)
+
+	response.Errno = errno
+	response.Data = data
+
+	resp, err = json.Marshal(response)
+	return
+}
+
 
 
 //文件上传接口应答
