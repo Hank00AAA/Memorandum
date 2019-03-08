@@ -539,6 +539,53 @@ func (memSink *MemSink)getTMemList(email string)(Resps *[]Common.TListInfo, err 
 	return &resp, nil
 }
 
+//7. 查询条目
+func (memSink *MemSink)getEntryAndStep(listid string)(resp *[]Common.EntryAndStep, err error){
+
+	var(
+		entryResult []Common.Entry
+		entryTmp    Common.Entry
+		stepResult  []Common.Step
+		stepTmp     Common.Step
+		singleStep  Common.SingleStep
+		resp_       []Common.EntryAndStep
+		singleResp  Common.EntryAndStep
+	)
+
+	//查到listid 对应的entry
+	if err = memSink.MC_Entry.Find(bson.M{"listid":listid}).All(&entryResult);err!=nil{
+		return nil,err
+	}
+
+	//根据entry查询对应的step，构造返回参数
+	for _, entryTmp = range entryResult{
+
+		singleResp.EntryID = entryTmp.EntryID
+		singleResp.EntryName = entryTmp.EntryName
+		singleResp.EntryVersion = entryTmp.Version
+		singleResp.StepArr = make([]Common.SingleStep, 0)
+
+		if err = memSink.MC_Step.Find(bson.M{"entryid":entryTmp.EntryID}).All(&stepResult);err!=nil{
+			return nil, err
+		}
+
+		for _, stepTmp = range stepResult{
+			singleStep.Date = stepTmp.Date
+			singleStep.Importance = stepTmp.Importance
+			singleStep.StepID = stepTmp.StepID
+
+			singleResp.StepArr = append(singleResp.StepArr, singleStep)
+		}
+
+		resp_ = append(resp_, singleResp)
+	}
+
+	return &resp_, nil
+
+
+
+}
+
 
 func InitMemSink()(err error){
 

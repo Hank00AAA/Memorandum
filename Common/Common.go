@@ -132,6 +132,32 @@ func BuildGetTMemListResp(errno int, data interface{})(resp []byte, err error){
 	return
 }
 
+//7. 查询条目
+type SingleStep struct{
+	StepID string
+	Date   string
+	Importance int
+}
+
+type EntryAndStep struct{
+	EntryID string
+	EntryName string
+	EntryVersion int
+	StepArr []SingleStep
+}
+
+func BuildGetEntryResp(errno int, data interface{})(resp []byte, err error){
+	var (
+		response Resp
+	)
+
+	response.Errno = errno
+	response.Data = data
+
+	resp, err = json.Marshal(response)
+	return
+}
+
 
 
 //文件上传接口应答

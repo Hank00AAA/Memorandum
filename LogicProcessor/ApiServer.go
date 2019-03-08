@@ -274,7 +274,38 @@ ERR:
 }
 
 //7. 查询条目
+//传入listid，返回Entry和step
+//state: finish
+//GET url:http://localhost:9000/getEntry?listid=PTL1
+
 func handleGetEntry(resp http.ResponseWriter, req *http.Request){
+	var(
+		err error
+		listID string
+		resps *[]Common.EntryAndStep
+		bytes []byte
+	)
+
+	//解析表单
+	if err = req.ParseForm();err!=nil{
+		goto ERR
+	}
+
+	listID = req.Form.Get("listid")
+	if resps, err = G_memSink.getEntryAndStep(listID);err!=nil{
+		goto ERR
+	}
+
+	if bytes, err = Common.BuildGetEntryResp(0, resps);err==nil{
+		resp.Write(bytes)
+	}
+
+	return
+
+	ERR:
+		if bytes, err = Common.BuildGetEntryResp(-1, nil);err==nil{
+			resp.Write(bytes)
+		}
 
 }
 
