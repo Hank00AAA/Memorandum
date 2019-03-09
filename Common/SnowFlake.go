@@ -21,7 +21,7 @@ var (
 	Epoch int64 = 1300000000000  //随便给个
 )
 
-type ID int64
+
 
 type Node struct{
 	mu sync.Mutex //添加互斥锁保证并发安全
@@ -44,7 +44,7 @@ func NewNode(node int64)(*Node, error){
 	}, nil
 }
 
-func (n *Node) Generate() ID{
+func (n *Node) Generate() int64{
 	n.mu.Lock()
 	defer n.mu.Unlock()
 
@@ -70,7 +70,7 @@ func (n *Node) Generate() ID{
 	n.timestamp = now
 
 	//移位运算
-	return    ID((now - Epoch) << timeShift | (n.node << nodeShift) | (n.step))
+	return    int64((now - Epoch) << timeShift | (n.node << nodeShift) | (n.step))
 
 }
 

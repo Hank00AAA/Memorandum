@@ -40,13 +40,13 @@ func main(){
 		goto ERR
 	}
 
-	//初始化数据库
-	if err = LogicProcessor.InitMemSink();err!=nil{
+	//初始化雪花算法参数
+	if err = LogicProcessor.InitNode(LogicProcessor.G_config.NodeID);err!=nil{
 		goto ERR
 	}
 
-	//初始化雪花算法参数
-	if err = LogicProcessor.InitNode(LogicProcessor.G_config.NodeID);err!=nil{
+	//初始化数据库
+	if err = LogicProcessor.InitMemSink();err!=nil{
 		goto ERR
 	}
 

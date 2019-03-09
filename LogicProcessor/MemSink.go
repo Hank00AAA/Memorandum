@@ -6,6 +6,7 @@ import (
 	"github.com/Hank00AAA/Memorandum/Common"
 	"go.mongodb.org/mongo-driver/bson"
 	"gopkg.in/mgo.v2"
+	"strconv"
 	"time"
 )
 
@@ -581,9 +582,50 @@ func (memSink *MemSink)getEntryAndStep(listid string)(resp *[]Common.EntryAndSte
 	}
 
 	return &resp_, nil
+}
 
+//添加个人清单
+//查询是否存在唯一用户，如果不存在则返回错误（用户不存在）
+//用雪花算法生成listI，注意
+// 1. ID = LISTID
+// 2. UserName = Email
+//插入完成后返回listid和listname
+func (memSink *MemSink)addPMemList(email string, listName string)(pmListResp *Common.AddPMLResp, err error){
 
+	var(
+		userResult []Common.User
+		listID     string
+		id         int64
+		insertPMemList Common.PMemList
+	)
 
+	//查询是否存在唯一用户
+	if err = memSink.MC_User.Find(bson.M{"email":email}).All(&userResult);err!=nil{
+		return nil, err
+	}
+
+	if len(userResult) == 0{
+		return nil, Common.ERR_ACCOUNT_DONT_EXIST
+	}else if len(userResult) > 1{
+		return nil, Common.ERR_MULTI_EMAIL_EXIST
+	}
+
+	//雪花算法生成唯一I
+	id = G_Node.Generate()
+	listID = strconv.FormatInt(id, 10)
+	fmt.Println("listid: ",listID)
+
+	//写入
+	insertPMemList.ListID = listID
+	insertPMemList.ID 	  = listID
+	insertPMemList.ListName = listName
+	insertPMemList.UserID  = email
+
+	if err = memSink.MC_PMemList.Insert(&insertPMemList);err!=nil{
+		return nil, err
+	}
+
+	return	&Common.AddPMLResp{ListName:listName, ListID:listID}, nil
 }
 
 
@@ -617,6 +659,8 @@ func InitMemSink()(err error){
 		MC_Step:step,
 		MC_TMemList:tmemlist,
 	}
+
+	G_memSink.addPMemList("111@qq.com","11")
 
 	//test
 	/*

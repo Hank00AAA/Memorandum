@@ -158,6 +158,23 @@ func BuildGetEntryResp(errno int, data interface{})(resp []byte, err error){
 	return
 }
 
+//8. 添加个人清单
+type AddPMLResp struct{
+	ListID string
+	ListName string
+}
+
+func BuildAddPMemListResp(errno int, data interface{})(resp []byte, err error){
+	var(
+		response Resp
+	)
+	response.Errno = errno
+	response.Data = data
+
+	resp, err = json.Marshal(response)
+	return
+}
+
 
 
 //文件上传接口应答

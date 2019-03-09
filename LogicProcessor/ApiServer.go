@@ -103,7 +103,7 @@ func handleSignIn(resp http.ResponseWriter, req *http.Request){
 	ERR:
 		fmt.Println(err)
 		//异常应答
-		if respbytes, err = Common.BuildSignInResp(-1, nil);err==nil{
+		if respbytes, err = Common.BuildSignInResp(-1, err.Error());err==nil{
 			resp.Write(respbytes)
 		}
 
@@ -153,7 +153,7 @@ func handleSearchByTag(resp http.ResponseWriter, req *http.Request){
 	return
 
 	ERR:
-		if bytes, err = Common.BuildSearchByTagResp(-1, nil);err==nil{
+		if bytes, err = Common.BuildSearchByTagResp(-1, err.Error());err==nil{
 			fmt.Println(err)
 			resp.Write(bytes)
 		}
@@ -191,7 +191,7 @@ func handleSearchByDate(resp http.ResponseWriter, req *http.Request){
 	return
 
 	ERR:
-		if bytes, err = Common.BuildSearchByTagResp(-1, nil);err==nil{
+		if bytes, err = Common.BuildSearchByTagResp(-1, err.Error());err==nil{
 			fmt.Println(err)
 			resp.Write(bytes)
 		}
@@ -229,7 +229,7 @@ func handleGetPMemList(resp http.ResponseWriter, req *http.Request){
 	return
 
 	ERR:
-		if bytes, err = Common.BuildGetPMemListResp(-1, nil);err==nil{
+		if bytes, err = Common.BuildGetPMemListResp(-1, err.Error());err==nil{
 			fmt.Println(err)
 			resp.Write(bytes)
 		}
@@ -266,7 +266,7 @@ func handleGetTMemList(resp http.ResponseWriter, req *http.Request){
 	return
 
 ERR:
-	if bytes, err = Common.BuildGetTMemListResp(-1, nil);err==nil{
+	if bytes, err = Common.BuildGetTMemListResp(-1, err.Error());err==nil{
 		fmt.Println(err)
 		resp.Write(bytes)
 	}
@@ -277,7 +277,6 @@ ERR:
 //传入listid，返回Entry和step
 //state: finish
 //GET url:http://localhost:9000/getEntry?listid=PTL1
-
 func handleGetEntry(resp http.ResponseWriter, req *http.Request){
 	var(
 		err error
@@ -303,14 +302,50 @@ func handleGetEntry(resp http.ResponseWriter, req *http.Request){
 	return
 
 	ERR:
-		if bytes, err = Common.BuildGetEntryResp(-1, nil);err==nil{
+		if bytes, err = Common.BuildGetEntryResp(-1, err.Error());err==nil{
 			resp.Write(bytes)
 		}
 
 }
 
 //8. 添加个人清单
+//State: finish
+//POST x-www-form-urlencoded
+// URL:http://localhost:9000/addPMemList
+//POST
+//email
+//listname
 func handleAddPMemList(resp http.ResponseWriter, req *http.Request){
+
+	var(
+		err error
+		bytes []byte
+		email string
+		listname string
+		respData *Common.AddPMLResp
+	)
+
+	if err = req.ParseForm();err!=nil{
+		goto ERR
+	}
+
+	email = req.PostForm.Get("email")
+	listname = req.PostForm.Get("listname")
+
+	if respData,  err = G_memSink.addPMemList(email, listname);err!=nil{
+		goto ERR
+	}
+
+	if bytes, err = Common.BuildAddPMemListResp(0, respData);err==nil{
+		resp.Write(bytes)
+	}
+
+	return
+
+	ERR:
+		if bytes, err = Common.BuildAddPMemListResp(-1, err.Error());err==nil{
+			resp.Write(bytes)
+		}
 
 }
 
