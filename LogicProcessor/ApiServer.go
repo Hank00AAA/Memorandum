@@ -350,38 +350,232 @@ func handleAddPMemList(resp http.ResponseWriter, req *http.Request){
 }
 
 //9. 添加团队清单
+//state:
+//POST URL:http://localhost:9000/addTMemList
+//email
+//listname
+
 func handleAddTMemList(resp http.ResponseWriter, req *http.Request){
 
+	var(
+		err error
+		bytes []byte
+		email string
+		listname string
+		respData *Common.AddTMLResp
+	)
+
+	if err = req.ParseForm();err!=nil{
+		goto ERR
+	}
+
+	email = req.PostForm.Get("email")
+	listname = req.PostForm.Get("listname")
+	fmt.Println(email, " ", listname)
+
+	if respData, err = G_memSink.addTMemList(email, listname);err!=nil{
+		goto ERR
+	}
+
+	if bytes, err = Common.BuildAddTMemListResp(0, respData);err==nil{
+		resp.Write(bytes)
+	}
+
+	return
+
+	ERR:
+		if bytes, err = Common.BuildAddTMemListResp(-1, err.Error());err==nil{
+			resp.Write(bytes)
+		}
 }
 
 //10. 根据条目id获取步骤
+//state:GET
+//http://localhost:9000/getSteps?entryid=test_entry_1
+//entryid
 func handleGetStep(resp http.ResponseWriter, req *http.Request){
+	var(
+		err error
+		bytes []byte
+		entryID string
+		result []Common.Step
+	)
+
+	if err = req.ParseForm();err!=nil{
+		goto ERR
+	}
+
+	entryID = req.Form.Get("entryid")
+	fmt.Println(entryID)
+
+	if result, err = G_memSink.getSteps(entryID);err!=nil{
+		goto ERR
+	}
+
+	if bytes, err = Common.BuildResp(0, result);err==nil{
+		resp.Write(bytes)
+	}
+
+
+	return
+
+	ERR:
+		if bytes, err = Common.BuildAddTMemListResp(-1, err.Error());err==nil{
+			resp.Write(bytes)
+		}
 
 }
 
 //11. 条目保存
 func handleSaveEntry(resp http.ResponseWriter, req *http.Request){
 
+
 }
 
 //12. 删除条目
 func handleDeleteEntry(resp http.ResponseWriter, req *http.Request){
+
+	var(
+		err error
+		bytes []byte
+		entryID string
+		isOK bool
+	)
+
+	if err = req.ParseForm();err!=nil{
+		goto ERR
+	}
+
+	entryID = req.Form.Get("entryid")
+
+	if isOK , err = G_memSink.deleteEntry(entryID);err!=nil{
+		goto ERR
+	}
+
+	if isOK{
+		if bytes, err = Common.BuildResp(0, nil);err==nil{
+			resp.Write(bytes)
+		}
+	}
+
+	return
+
+ERR:
+	if bytes, err = Common.BuildAddTMemListResp(-1, err.Error());err==nil{
+		resp.Write(bytes)
+	}
+
 
 }
 
 //13. 查询团队成员
 func handleGetMember(resp http.ResponseWriter, req *http.Request){
 
+	var(
+		err error
+		bytes []byte
+		tMemListID string
+		email Common.EmailResult
+	)
+
+	if err = req.ParseForm();err!=nil{
+		goto ERR
+	}
+
+	tMemListID = req.Form.Get("tmemlistid")
+
+	if email.Email, err = G_memSink.getTMemberByListID(tMemListID);err!=nil{
+		goto ERR
+	}
+
+	if bytes, err = Common.BuildAddTMemListResp(0, email);err==nil{
+		resp.Write(bytes)
+	}
+
+	return
+
+ERR:
+	if bytes, err = Common.BuildAddTMemListResp(-1, err.Error());err==nil{
+		resp.Write(bytes)
+	}
 }
 
 //14. 添加团队成员
+//state:finish
+//GET  http://localhost:9000/addMember?tmemlistid=TML2&email=222@qq.com
+//tmemlistid
+//email
 func handleAddMember(resp http.ResponseWriter, req *http.Request){
+	var(
+		tmemlistid string
+		email string
+		err error
+		bytes []byte
+		isOK bool
+	)
+
+	if err = req.ParseForm();err!=nil{
+		goto ERR
+	}
+
+	tmemlistid = req.Form.Get("tmemlistid")
+	email      = req.Form.Get("email")
+
+	if isOK, err = G_memSink.addTMember(tmemlistid, email);!isOK{
+		goto ERR
+	}
+
+	if bytes, err = Common.BuildAddTMemListResp(0, nil);err==nil{
+		resp.Write(bytes)
+	}
+
+	return
+
+
+ERR:
+	if bytes, err = Common.BuildAddTMemListResp(-1, err.Error());err==nil{
+		resp.Write(bytes)
+	}
 
 }
 
 //15. 删除团队成员
+//state:finish
+//GET http://localhost:9000/deleteMember?tmemlistid=TML1&email=111@qq.com
+//tmemlist
+//email
 func handleDeleteMember(resp http.ResponseWriter, req *http.Request){
+	var(
+		tmemlistid string
+		email string
+		err error
+		bytes []byte
+		isOK bool
+	)
 
+	if err = req.ParseForm();err!=nil{
+		goto ERR
+	}
+
+	tmemlistid = req.Form.Get("tmemlistid")
+	email      = req.Form.Get("email")
+
+	fmt.Println(tmemlistid)
+	fmt.Println(email)
+
+	if isOK, err = G_memSink.deleteTMember(tmemlistid, email);!isOK{
+		goto ERR
+	}
+
+	if bytes, err = Common.BuildAddTMemListResp(0, nil);err==nil{
+		resp.Write(bytes)
+	}
+
+	return
+ERR:
+	if bytes, err = Common.BuildAddTMemListResp(-1, err.Error());err==nil{
+		resp.Write(bytes)
+	}
 }
 
 //初始化服务

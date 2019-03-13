@@ -38,7 +38,7 @@ type Step struct{
 	ID   string    		`json:"_id"      bson:"_id"`
 	//mongodb唯一主键 ID = StepID
 	StepID string `json:"stepid" bson:"stepid"`
-	EntryID string `json:"entryid" bason:"entryid"`
+	EntryID string `json:"entryid" bson:"entryid"`
 	Sequence int   `json:"sequence" bson:"sequence"`
 	StepName string `json:"stepname" bson:"stepname"`
 	Date    string `json:"date" bson:"date"`

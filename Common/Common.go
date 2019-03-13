@@ -175,6 +175,45 @@ func BuildAddPMemListResp(errno int, data interface{})(resp []byte, err error){
 	return
 }
 
+//9. 添加团队清单
+type AddTMLResp struct{
+	ListID string
+	ListName string
+}
+
+func BuildAddTMemListResp(errno int, data interface{})(resp []byte, err error){
+
+	var(
+		response Resp
+	)
+
+	response.Errno = errno
+	response.Data  = data
+
+	//序列化
+	resp, err = json.Marshal(response)
+	return
+}
+
+//10. 根据entryID查询step
+func BuildResp(errno int, data interface{})(resp []byte, err error){
+
+	var(
+		response Resp
+	)
+
+	response.Errno = errno
+	response.Data  = data
+
+	//序列化
+	resp, err = json.Marshal(response)
+	return
+}
+
+//13.根据tmemlistID查询成员
+type EmailResult struct{
+	Email []string `json:"email" bson:"email"`
+}
 
 
 //文件上传接口应答

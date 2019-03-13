@@ -584,7 +584,7 @@ func (memSink *MemSink)getEntryAndStep(listid string)(resp *[]Common.EntryAndSte
 	return &resp_, nil
 }
 
-//添加个人清单
+//8. 添加个人清单
 //查询是否存在唯一用户，如果不存在则返回错误（用户不存在）
 //用雪花算法生成listI，注意
 // 1. ID = LISTID
@@ -628,6 +628,163 @@ func (memSink *MemSink)addPMemList(email string, listName string)(pmListResp *Co
 	return	&Common.AddPMLResp{ListName:listName, ListID:listID}, nil
 }
 
+//9. 添加团队清单
+func (memSink *MemSink)addTMemList(email string, listname string)(resp *Common.AddTMLResp, err error){
+
+	var(
+		userResult []Common.User
+		listID     string
+		id         int64
+		insertTMemList Common.TMemList
+		)
+
+	//查询是否存在用户
+	if err = memSink.MC_User.Find(bson.M{"email":email}).All(&userResult);err!=nil{
+		return nil, err
+	}
+
+	if len(userResult) == 0{
+		return nil, Common.ERR_ACCOUNT_DONT_EXIST
+	}else if len(userResult) > 1{
+		return nil, Common.ERR_MULTI_EMAIL_EXIST
+	}
+
+	//雪花算法生成唯一I
+	id = G_Node.Generate()
+	listID = strconv.FormatInt(id, 10)
+	fmt.Println("listid: ",listID)
+
+	//构造团队清单
+	insertTMemList.ListID = listID
+	insertTMemList.ID	  = listID
+	insertTMemList.ListName = listname
+	insertTMemList.UserID  = email
+
+	//插入数据库
+	if err = memSink.MC_TMemList.Insert(&insertTMemList);err!=nil{
+		return nil, err
+	}
+
+	return &Common.AddTMLResp{ListName:listname, ListID:listID}, nil
+
+}
+
+//10. 根据条目id获取步骤
+func (memSink *MemSink)getSteps(entryID string)(result []Common.Step, err error){
+
+	var(
+
+	)
+
+	if err = memSink.MC_Step.Find(bson.M{"entryid":entryID}).All(&result);err!=nil{
+		return nil, err
+	}
+
+	return result, err
+}
+
+//12. 删除条目
+func (memSink *MemSink)deleteEntry(entryID string)(isOk bool, err error){
+
+	var(
+
+	)
+
+	if _, err = memSink.MC_Entry.RemoveAll(bson.M{"entryid":entryID});err!=nil{
+		return false, err
+	}
+
+	if _, err = memSink.MC_Step.RemoveAll(bson.M{"entryid":entryID});err!=nil{
+		return false, err
+	}
+
+	return true, nil
+
+}
+
+//13. 查询团队成员
+func (memSink *MemSink)getTMemberByListID(tMemListID string)(emails []string, err error){
+	var(
+		tMemList []Common.TMemList
+		email_tmp Common.TMemList
+	)
+
+	emails = make([]string, 0)
+
+	if err = memSink.MC_TMemList.Find(bson.M{"listid":tMemListID}).All(&tMemList);err!=nil{
+		return nil, err
+	}
+
+	for _, email_tmp = range tMemList{
+		emails = append(emails, email_tmp.UserID)
+	}
+
+	return emails, nil
+}
+
+//14. 添加团队成员
+func (memSink *MemSink)addTMember(tMemListID string, email string)(isok bool , err error){
+	var(
+		user []Common.User
+		tMemList []Common.TMemList
+	)
+
+	if err = memSink.MC_User.Find(bson.M{"userid":email}).All(&user);err!=nil{
+		return false, err
+	}
+
+	if len(user)==0{
+		return false, errors.New("帐号不存在")
+	}
+
+	if len(user) > 1{
+		fmt.Println("存在多个邮箱相同的帐号")
+	}
+
+	if err = memSink.MC_TMemList.Find(bson.M{"listid":tMemListID}).All(&tMemList);err!=nil{
+		return false, err
+	}
+
+	if len(tMemList) == 0{
+		return false, errors.New("ID不存在")
+	}
+
+	if err = memSink.MC_TMemList.Insert(&Common.TMemList{
+		ID: tMemListID+email,
+		ListID:tMemListID,
+		ListName:tMemList[0].ListName,
+		UserID:email,
+	});err!=nil{
+		return false, err
+	}
+
+	return true, nil
+}
+
+//15. 删除团队成员
+func (memSink *MemSink)deleteTMember(tMemListID string, email string)(isok bool , err error){
+	var(
+		user []Common.User
+	)
+
+	if err = memSink.MC_User.Find(bson.M{"userid":email}).All(&user);err!=nil{
+		return false, err
+	}
+
+	if len(user)==0{
+		return false, errors.New("帐号不存在")
+	}
+
+	if len(user) > 1{
+		fmt.Println("存在多个邮箱相同的帐号")
+	}
+
+	if _, err = memSink.MC_TMemList.RemoveAll(bson.M{"listid":tMemListID, "userid":email});err!=nil{
+		return false, err
+	}
+
+	return true, nil
+}
 
 func InitMemSink()(err error){
 

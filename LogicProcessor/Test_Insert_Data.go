@@ -9,6 +9,7 @@ func Insert_Data()(err error){
 
 	var(
 		user_id string = "111@qq.com"
+		user_id_2 string = "222@qq.com"
 		pMmemList_id string = "PTL1"
 		pMemList_id_2 string = "PTL2"
 		tMemList_id string = "TML1"
@@ -31,6 +32,15 @@ func Insert_Data()(err error){
 		ID: user_id,
 		UserID:user_id,
 		Email:user_id,
+		PassWord:"111",
+	});err!=nil{
+		fmt.Println(err)
+	}
+
+	if err = G_memSink.MC_User.Insert(&Common.User{
+		ID: user_id_2,
+		UserID:user_id_2,
+		Email:user_id_2,
 		PassWord:"111",
 	});err!=nil{
 		fmt.Println(err)
@@ -208,6 +218,14 @@ func Insert_Data()(err error){
 		ListID:tMemList_id_2,
 		ListName:"Test Tmemlist_2",
 		UserID:user_id,
+	});err!=nil{
+		fmt.Println(err)
+	}
+
+	if err = G_memSink.MC_TMemList.Insert(&Common.TMemList{
+		ListID:tMemList_id_2,
+		ListName:"Test Tmemlist_2",
+		UserID:"test_user_ID",
 	});err!=nil{
 		fmt.Println(err)
 	}
