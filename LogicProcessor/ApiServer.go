@@ -29,7 +29,7 @@ func handleSignUp(resp http.ResponseWriter, req *http.Request){
 //{ errno: 0 data:[ {plistid: | pListName:  } ]}
 //3. 如果没有，返回
 //{ errno: -1 data:[nil] }
-//不知道为什么post方法得不出结果，改成get了
+//POST FORM-DATA
 //State: 测试完成
 //http://localhost:9000/signin?email=1222&password=4
 func handleSignIn(resp http.ResponseWriter, req *http.Request){
@@ -51,14 +51,14 @@ func handleSignIn(resp http.ResponseWriter, req *http.Request){
 	plist_resp = make([]Common.PList, 0)
 
 	//解析表单
-	if err = req.ParseForm();err!=nil{
+	if err = req.ParseMultipartForm(32<<20);err!=nil{
 		goto ERR
 	}
 
 	fmt.Println("get req")
 
-	email = req.Form.Get("email")
-	password = req.Form.Get("password")
+	email = req.PostForm.Get("email")
+	password = req.PostForm.Get("password")
 
 	fmt.Println(email)
 	fmt.Println(password)
@@ -112,7 +112,7 @@ func handleSignIn(resp http.ResponseWriter, req *http.Request){
 //3. 根据标签查询条目
 //根据tag进行查询 0:今天 1:最近七天
 //根据查询结果返回
-//get方法
+//POST方法 FORM_DATA
 //url:http://localhost:9000/searchByTag?email=111@qq.com&tag=1
 func handleSearchByTag(resp http.ResponseWriter, req *http.Request){
 
@@ -125,13 +125,13 @@ func handleSearchByTag(resp http.ResponseWriter, req *http.Request){
 	)
 
 	//解析表单
-	if err = req.ParseForm();err!=nil{
+	if err = req.ParseMultipartForm(32<<20);err!=nil{
 		goto ERR
 	}
 
 	//email   tag
-	email = req.Form.Get("email")
-	tag = req.Form.Get("tag")
+	email = req.PostForm.Get("email")
+	tag = req.PostForm.Get("tag")
 	fmt.Println("email:",email)
 	fmt.Println("tag",tag)
 
@@ -161,7 +161,7 @@ func handleSearchByTag(resp http.ResponseWriter, req *http.Request){
 
 //4. 根据日期查询条目
 //state:finish
-//GET url: http://localhost:9000/searchByDate?email=111@qq.com&date=2019-03-08
+//POST url: http://localhost:9000/searchByDate?email=111@qq.com&date=2019-03-08
 func handleSearchByDate(resp http.ResponseWriter, req *http.Request){
 
 	var(
@@ -173,12 +173,12 @@ func handleSearchByDate(resp http.ResponseWriter, req *http.Request){
 	)
 
 	//解析表单
-	if err = req.ParseForm();err!=nil{
+	if err = req.ParseMultipartForm(32<<20);err!=nil{
 		goto ERR
 	}
 
-	email = req.Form.Get("email")
-	date  = req.Form.Get("date")
+	email = req.PostForm.Get("email")
+	date  = req.PostForm.Get("date")
 
 	if searchArr, err = G_memSink.getDateEntry(email, date);err!=nil{
 		goto ERR
@@ -200,7 +200,7 @@ func handleSearchByDate(resp http.ResponseWriter, req *http.Request){
 
 //5. 查询个人备忘录清单
 //state:finish
-//GET url:http://localhost:9000/getPMemList?email=111@qq.com
+//POST url:http://localhost:9000/getPMemList?email=111@qq.com
 func handleGetPMemList(resp http.ResponseWriter, req *http.Request){
 
 	var(
@@ -211,11 +211,11 @@ func handleGetPMemList(resp http.ResponseWriter, req *http.Request){
 	)
 
 	//解析表单
-	if err = req.ParseForm();err!=nil{
+	if err = req.ParseMultipartForm(32<<20);err!=nil{
 		goto ERR
 	}
 
-	email = req.Form.Get("email")
+	email = req.PostForm.Get("email")
 	fmt.Println(email)
 
 	if result ,err = G_memSink.getPMemList(email);err!=nil{
@@ -248,11 +248,11 @@ func handleGetTMemList(resp http.ResponseWriter, req *http.Request){
 	)
 
 	//解析表单
-	if err = req.ParseForm();err!=nil{
+	if err = req.ParseMultipartForm(32<<20);err!=nil{
 		goto ERR
 	}
 
-	email = req.Form.Get("email")
+	email = req.PostForm.Get("email")
 	fmt.Println(email)
 
 	if result ,err = G_memSink.getTMemList(email);err!=nil{
@@ -286,11 +286,11 @@ func handleGetEntry(resp http.ResponseWriter, req *http.Request){
 	)
 
 	//解析表单
-	if err = req.ParseForm();err!=nil{
+	if err = req.ParseMultipartForm(32<<20);err!=nil{
 		goto ERR
 	}
 
-	listID = req.Form.Get("listid")
+	listID = req.PostForm.Get("listid")
 	if resps, err = G_memSink.getEntryAndStep(listID);err!=nil{
 		goto ERR
 	}
@@ -310,9 +310,8 @@ func handleGetEntry(resp http.ResponseWriter, req *http.Request){
 
 //8. 添加个人清单
 //State: finish
-//POST x-www-form-urlencoded
 // URL:http://localhost:9000/addPMemList
-//POST
+//POST form-data
 //email
 //listname
 func handleAddPMemList(resp http.ResponseWriter, req *http.Request){
@@ -325,7 +324,7 @@ func handleAddPMemList(resp http.ResponseWriter, req *http.Request){
 		respData *Common.AddPMLResp
 	)
 
-	if err = req.ParseForm();err!=nil{
+	if err = req.ParseMultipartForm(32<<20);err!=nil{
 		goto ERR
 	}
 
@@ -350,7 +349,7 @@ func handleAddPMemList(resp http.ResponseWriter, req *http.Request){
 }
 
 //9. 添加团队清单
-//state:
+//state:finish
 //POST URL:http://localhost:9000/addTMemList
 //email
 //listname
@@ -365,13 +364,12 @@ func handleAddTMemList(resp http.ResponseWriter, req *http.Request){
 		respData *Common.AddTMLResp
 	)
 
-	if err = req.ParseForm();err!=nil{
+	if err = req.ParseMultipartForm(32<<20);err!=nil{
 		goto ERR
 	}
 
 	email = req.PostForm.Get("email")
 	listname = req.PostForm.Get("listname")
-	fmt.Println(email, " ", listname)
 
 	if respData, err = G_memSink.addTMemList(email, listname);err!=nil{
 		goto ERR
@@ -390,8 +388,9 @@ func handleAddTMemList(resp http.ResponseWriter, req *http.Request){
 }
 
 //10. 根据条目id获取步骤
-//state:GET
+//state:finish
 //http://localhost:9000/getSteps?entryid=test_entry_1
+//POST
 //entryid
 func handleGetStep(resp http.ResponseWriter, req *http.Request){
 	var(
@@ -401,11 +400,11 @@ func handleGetStep(resp http.ResponseWriter, req *http.Request){
 		result []Common.Step
 	)
 
-	if err = req.ParseForm();err!=nil{
+	if err = req.ParseMultipartForm(32<<20);err!=nil{
 		goto ERR
 	}
 
-	entryID = req.Form.Get("entryid")
+	entryID = req.PostForm.Get("entryid")
 	fmt.Println(entryID)
 
 	if result, err = G_memSink.getSteps(entryID);err!=nil{
@@ -416,19 +415,27 @@ func handleGetStep(resp http.ResponseWriter, req *http.Request){
 		resp.Write(bytes)
 	}
 
-
 	return
 
 	ERR:
 		if bytes, err = Common.BuildAddTMemListResp(-1, err.Error());err==nil{
 			resp.Write(bytes)
 		}
-
 }
 
 //11. 条目保存
 func handleSaveEntry(resp http.ResponseWriter, req *http.Request){
 
+	var(
+		test string
+	)
+
+	req.ParseMultipartForm(32<<20)
+
+	test = req.PostForm.Get("test")
+
+	fmt.Println("test:",test)
+	fmt.Println(req.PostForm.Get("test"))
 
 }
 
@@ -442,11 +449,11 @@ func handleDeleteEntry(resp http.ResponseWriter, req *http.Request){
 		isOK bool
 	)
 
-	if err = req.ParseForm();err!=nil{
+	if err = req.ParseMultipartForm(32<<20);err!=nil{
 		goto ERR
 	}
 
-	entryID = req.Form.Get("entryid")
+	entryID = req.PostForm.Get("entryid")
 
 	if isOK , err = G_memSink.deleteEntry(entryID);err!=nil{
 		goto ERR
@@ -478,11 +485,11 @@ func handleGetMember(resp http.ResponseWriter, req *http.Request){
 		email Common.EmailResult
 	)
 
-	if err = req.ParseForm();err!=nil{
+	if err = req.ParseMultipartForm(32<<20);err!=nil{
 		goto ERR
 	}
 
-	tMemListID = req.Form.Get("tmemlistid")
+	tMemListID = req.PostForm.Get("tmemlistid")
 
 	if email.Email, err = G_memSink.getTMemberByListID(tMemListID);err!=nil{
 		goto ERR
@@ -502,7 +509,7 @@ ERR:
 
 //14. 添加团队成员
 //state:finish
-//GET  http://localhost:9000/addMember?tmemlistid=TML2&email=222@qq.com
+//POST  http://localhost:9000/addMember?tmemlistid=TML2&email=222@qq.com
 //tmemlistid
 //email
 func handleAddMember(resp http.ResponseWriter, req *http.Request){
@@ -514,12 +521,12 @@ func handleAddMember(resp http.ResponseWriter, req *http.Request){
 		isOK bool
 	)
 
-	if err = req.ParseForm();err!=nil{
+	if err = req.ParseMultipartForm(32<<20);err!=nil{
 		goto ERR
 	}
 
-	tmemlistid = req.Form.Get("tmemlistid")
-	email      = req.Form.Get("email")
+	tmemlistid = req.PostForm.Get("tmemlistid")
+	email      = req.PostForm.Get("email")
 
 	if isOK, err = G_memSink.addTMember(tmemlistid, email);!isOK{
 		goto ERR
@@ -531,7 +538,6 @@ func handleAddMember(resp http.ResponseWriter, req *http.Request){
 
 	return
 
-
 ERR:
 	if bytes, err = Common.BuildAddTMemListResp(-1, err.Error());err==nil{
 		resp.Write(bytes)
@@ -541,7 +547,7 @@ ERR:
 
 //15. 删除团队成员
 //state:finish
-//GET http://localhost:9000/deleteMember?tmemlistid=TML1&email=111@qq.com
+//POST http://localhost:9000/deleteMember?tmemlistid=TML1&email=111@qq.com
 //tmemlist
 //email
 func handleDeleteMember(resp http.ResponseWriter, req *http.Request){
@@ -553,12 +559,12 @@ func handleDeleteMember(resp http.ResponseWriter, req *http.Request){
 		isOK bool
 	)
 
-	if err = req.ParseForm();err!=nil{
+	if err = req.ParseMultipartForm(32<<20);err!=nil{
 		goto ERR
 	}
 
-	tmemlistid = req.Form.Get("tmemlistid")
-	email      = req.Form.Get("email")
+	tmemlistid = req.PostForm.Get("tmemlistid")
+	email      = req.PostForm.Get("email")
 
 	fmt.Println(tmemlistid)
 	fmt.Println(email)
