@@ -1,8 +1,10 @@
 package LogicProcessor
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/Hank00AAA/Memorandum/Common"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"strconv"
@@ -45,7 +47,6 @@ func handleSignIn(resp http.ResponseWriter, req *http.Request){
 		plist_temp Common.PMemList
 		plist_resp []Common.PList
 		temp Common.PList
-
 	)
 
 	plist_resp = make([]Common.PList, 0)
@@ -106,7 +107,6 @@ func handleSignIn(resp http.ResponseWriter, req *http.Request){
 		if respbytes, err = Common.BuildSignInResp(-1, err.Error());err==nil{
 			resp.Write(respbytes)
 		}
-
 }
 
 //3. 根据标签查询条目
@@ -423,20 +423,56 @@ func handleGetStep(resp http.ResponseWriter, req *http.Request){
 		}
 }
 
+//json test:
+//
+
 //11. 条目保存
+//
 func handleSaveEntry(resp http.ResponseWriter, req *http.Request){
 
 	var(
-		test string
+		reqContent []byte
+		err error
+		bytes []byte
+		dataUnMar Common.ReqData
+		isOK bool
+		result Common.ReqResp
+		entryID string
 	)
 
-	req.ParseMultipartForm(32<<20)
 
-	test = req.PostForm.Get("test")
 
-	fmt.Println("test:",test)
-	fmt.Println(req.PostForm.Get("test"))
+	if reqContent, err = ioutil.ReadAll(req.Body);err!=nil{
+		goto ERR
+	}
 
+	if err = json.Unmarshal(reqContent, &dataUnMar);err!=nil{
+		goto ERR
+	}
+
+	fmt.Println(dataUnMar)
+
+	if isOK, entryID, err = G_memSink.saveEntry(&dataUnMar);err!=nil{
+		goto ERR
+	}
+
+	if isOK == false{
+		goto ERR
+	}
+
+	result.Version = dataUnMar.Version
+	result.EntryID = entryID
+	result.Steps = dataUnMar.StepArr
+
+	if bytes, err = Common.BuildAddTMemListResp(0, result);err==nil{
+		resp.Write(bytes)
+	}
+
+	return
+ERR:
+	if bytes, err = Common.BuildAddTMemListResp(-1, err.Error());err==nil{
+		resp.Write(bytes)
+	}
 }
 
 //12. 删除条目
@@ -471,8 +507,6 @@ ERR:
 	if bytes, err = Common.BuildAddTMemListResp(-1, err.Error());err==nil{
 		resp.Write(bytes)
 	}
-
-
 }
 
 //13. 查询团队成员
@@ -583,6 +617,7 @@ ERR:
 		resp.Write(bytes)
 	}
 }
+
 
 //初始化服务
 func InitApiServer()(err error){

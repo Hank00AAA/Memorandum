@@ -21,7 +21,10 @@
   "mongodbConnectionTimeout:": 5000,
 
   "NodeID__": "本机的节点id，不要重复",
-  "nodeId": 1
+  "nodeId": 1,
+
+  "token过期时间": "单位是秒",
+  "tokenLease": 3600
 
 
 }

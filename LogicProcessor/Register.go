@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/Hank00AAA/Memorandum/Common"
 	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/mvcc/mvccpb"
 	"strconv"
 	"time"
 )
@@ -75,6 +76,53 @@ func (register *Register)KeepOnline(){
 	}
 }
 
+//查询email和token是否存在
+func (register *Register)checkEmail_Token(email string, token string)(isExist bool, err error){
+	var(
+		getResp *clientv3.GetResponse
+		kvPair *mvccpb.KeyValue
+	)
+
+	if getResp, err  =register.kv.Get(context.TODO(), Common.TOKEN_SAVE_DIT+email);err!=nil{
+		return false, err
+	}
+
+	if getResp.Count == 0{
+		//没有
+		return false, nil
+	}
+
+	for _, kvPair = range getResp.Kvs{
+		if string(kvPair.Value) == token{
+			return true, nil
+		}
+	}
+	return  false, nil
+}
+
+//将token写入etcd
+func (register *Register)writeToken(email string, token string)(isOK bool, err error){
+
+	var(
+		tokenKey string
+		leaseGrantedResp *clientv3.LeaseGrantResponse
+	)
+
+	//注册路径
+	tokenKey = Common.TOKEN_SAVE_DIT + email
+
+	//创建lease
+	if leaseGrantedResp, err = register.lease.Grant(context.TODO(), G_config.TokenLease);err!=nil{
+		return false, err
+	}
+
+	//写入到token目录
+	if _, err = register.kv.Put(context.TODO(), tokenKey, token, clientv3.WithLease(leaseGrantedResp.ID));err!=nil{
+		return false, err
+	}
+
+	return true, nil
+}
 
 func InitRegister()(err error){
 	var(
@@ -119,6 +167,17 @@ func InitRegister()(err error){
 	}
 
 	go G_register.KeepOnline()
+
+	/*
+	var isOK bool
+	//test
+	G_register.writeToken("111@qq.com", "222")
+	if isOK, err = G_register.checkEmail_Token("1111@qq.com","222");err!=nil{
+		fmt.Println(err)
+	}
+
+	fmt.Println(isOK)
+	*/
 
 	return
 }

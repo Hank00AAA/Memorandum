@@ -55,8 +55,10 @@ func main(){
 		goto ERR
 	}
 
+	LogicProcessor.CreateToken()
+
 	//TEST INSERT
-	LogicProcessor.Insert_Data()
+	//LogicProcessor.Insert_Data()
 
 
 

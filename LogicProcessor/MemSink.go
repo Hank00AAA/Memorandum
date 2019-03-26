@@ -666,7 +666,6 @@ func (memSink *MemSink)addTMemList(email string, listname string)(resp *Common.A
 	}
 
 	return &Common.AddTMLResp{ListName:listname, ListID:listID}, nil
-
 }
 
 //10. 根据条目id获取步骤
@@ -682,6 +681,150 @@ func (memSink *MemSink)getSteps(entryID string)(result []Common.Step, err error)
 
 	return result, err
 }
+
+//11. 保存条目
+//首先看是否是 -1 ， 如果是-1，说明是新条目，则按照添加流程走
+//不是-1
+//则用乐观锁，删除所有之前的step，然后插入现在的step，version+1
+//如果isOK = false，err！=nil，说明已经有人先更新了
+
+func (memSink *MemSink)saveEntry(data *Common.ReqData)(isOK bool , entryID string, err error){
+
+	var(
+		step_temp Common.Step
+		entryLock *EntryLock
+		iEntry Common.Entry
+		queryEntry []Common.Entry
+		oldSteps []Common.Step
+	)
+
+	err = nil
+
+	for i:=0;i < len(data.StepArr);i++{
+		data.StepArr[i].StepID = strconv.FormatInt(G_Node.Generate(), 10)
+		data.StepArr[i].ID = data.StepArr[i].StepID
+	}
+
+	if(data.EntryID == "-1"){
+		//新建entryI，然后把step的entrid全赋值上
+		//抢分布式锁，插入新step
+		data.EntryID = strconv.FormatInt(G_Node.Generate(),10)
+		fmt.Println(data.EntryID)
+
+		for i:=0; i < len(data.StepArr); i++{
+			data.StepArr[i].EntryID = data.EntryID
+		}
+
+		//抢锁
+		entryLock = InitEntryLock(data.EntryID, G_register.kv, G_register.lease)
+		if err = entryLock.TryLock();err!=nil{
+			goto ERR
+		}
+		defer entryLock.Unlock()
+
+		//如果锁被抢了，返回false
+		if entryLock.isLocked == false{
+			err = Common.ERR_LOCK_HAS_EXISTED
+			goto ERR
+		}
+
+		//写入数据
+		//写入entry
+		iEntry.ID = data.EntryID
+		iEntry.EntryID = data.EntryID
+		iEntry.ListID = data.ListID   //要不要检查下存不存在？
+		iEntry.EntryName = data.EntryName
+		iEntry.Version = data.Version
+		iEntry.State = data.State
+		if err = G_memSink.MC_Entry.Insert(&iEntry);err!=nil{
+			goto ERR
+		}
+		//写入step
+		for _, step_temp = range data.StepArr{
+			if err = G_memSink.MC_Step.Insert(step_temp);err!=nil{
+				goto ERR
+			}
+		}
+		return true, data.EntryID,nil
+	} else{
+		//防止前端打错
+		for i:=0;i < len(data.StepArr);i++{
+			data.StepArr[i].EntryID = data.EntryID
+		}
+
+		//先检查entryid是否存在，不存在则可能被删除，让前端确认
+		//抢分布式锁，删除旧step，然后插入新step
+		if err = G_memSink.MC_Entry.Find(bson.M{"entryid":data.EntryID}).All(&queryEntry);err!=nil{
+			goto ERR
+		}
+
+		if len(queryEntry) == 0{
+			err = Common.ERR_ENTRY_DONT_EXIST
+			goto ERR
+		}
+
+		if len(queryEntry) > 1 {
+			fmt.Println("entry count > 1", queryEntry)
+		}
+
+		//抢锁
+		entryLock = InitEntryLock(data.EntryID, G_register.kv, G_register.lease)
+		if err = entryLock.TryLock();err!=nil{
+			goto ERR
+		}
+		defer entryLock.Unlock()
+
+		//如果锁被抢了，返回false
+		if entryLock.isLocked == false{
+			err = Common.ERR_LOCK_HAS_EXISTED
+			goto ERR
+		}
+
+		//先检查version字段
+		//必须大于当前version才能更新
+		if queryEntry[0].Version >= data.Version{
+			err = Common.ERR_VERSION_IS_SMALLER
+			fmt.Println(err.Error())
+			goto ERR
+		}
+
+		//查询旧step
+		if err = G_memSink.MC_Step.Find(bson.M{"entryid":data.EntryID}).All(&oldSteps);err!=nil{
+			goto ERR
+		}
+
+		//更新新step
+		for _, step_temp = range data.StepArr{
+			if err = G_memSink.MC_Step.Insert(step_temp);err!=nil{
+				goto ERR
+			}
+		}
+
+		//更新entry的version
+		if err = G_memSink.MC_Entry.Update(bson.M{"entryid":data.EntryID}, bson.M{
+			"entryid":queryEntry[0].EntryID,
+			"entryname":queryEntry[0].EntryName,
+			"listid":queryEntry[0].ListID,
+			"state":queryEntry[0].State,
+			"version":data.Version});
+		err!=nil{
+			goto ERR
+		}
+
+		//删除旧step
+		for _, step_temp = range oldSteps{
+			if _, err = G_memSink.MC_Step.RemoveAll(bson.M{"stepid":step_temp.StepID});err!=nil{
+				goto ERR
+			}
+		}
+	}
+	return true, data.EntryID, err
+
+	ERR:
+		return false, data.EntryID, err
+
+}
+
 
 //12. 删除条目
 func (memSink *MemSink)deleteEntry(entryID string)(isOk bool, err error){

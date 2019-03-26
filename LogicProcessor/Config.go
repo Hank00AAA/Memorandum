@@ -15,6 +15,7 @@ type Config struct{
 	MongodbUri string `json:"mongodbUri"`
 	MongodbConnectionTimeout int `json:"mongodbConnectionTimeout"`
 	NodeID 					 int64 `json:"nodeId"`
+	TokenLease  int64        `json:"tokenLease"`
 }
 
 var(
@@ -45,7 +46,8 @@ func InitConfig(filenames string)(err error){
 		G_config.ApiPort,
 		G_config.ApiReadTimeout,
 		G_config.ApiWriterTimeout,
-		G_config.NodeID)
+		G_config.NodeID,
+		G_config.TokenLease)
 
 	return
 

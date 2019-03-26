@@ -210,6 +210,23 @@ func BuildResp(errno int, data interface{})(resp []byte, err error){
 	return
 }
 
+//11. 条目保存
+type ReqData struct{
+	EntryID string `json:"entryid"`
+	EntryName string `json:"entryname"`
+	ListID string `json:"listid"`
+	State int `json:"state"`
+	Version int    `json:"version"`
+	StepArr []Step  `json:"steps"`
+}
+
+type ReqResp struct{
+	Version int `json:"version"`
+	EntryID string `json:"entryid"`
+	Steps []Step `json:"steps"`
+}
+
+
 //13.根据tmemlistID查询成员
 type EmailResult struct{
 	Email []string `json:"email" bson:"email"`
