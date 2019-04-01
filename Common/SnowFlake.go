@@ -71,7 +71,6 @@ func (n *Node) Generate() int64{
 
 	//移位运算
 	return    int64((now - Epoch) << timeShift | (n.node << nodeShift) | (n.step))
-
 }
 
 

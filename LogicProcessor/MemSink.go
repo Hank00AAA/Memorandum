@@ -18,14 +18,32 @@ type MemSink struct {
 	MC_Entry 	*mgo.Collection
 	MC_Step		*mgo.Collection
 	MC_TMemList *mgo.Collection
-
-
 }
 
 //单例
 var(
 	G_memSink *MemSink
 )
+
+func (memSink *MemSink)SingUp(email string, password string)(err error){
+
+	var(
+		user *Common.User
+	)
+
+	user = &Common.User{
+		ID: email,
+		UserID: email,
+		Email:email,
+		PassWord:password,
+	}
+
+	if err = memSink.MC_User.Insert(user);err!=nil{
+		return err
+	}
+
+	return nil
+}
 
 //登陆：查询是否有此帐号，以及密码是否对应
 func (memSink *MemSink)checkWithEmail_Password(email string, password string)(
@@ -118,16 +136,19 @@ func (memSink *MemSink)getTodayEntry(email string)(searchArr *[]Common.SearchRes
 	//pMemList
 	for _, pList_tmp = range pmList{
 		//根据pmList获取对应的entry
-		if err = G_memSink.MC_Entry.Find(bson.M{"listid":pList_tmp.ListID}).All(&pEntryList);err!=nil{
+		if err = G_memSink.MC_Entry.Find(bson.M{"listid":pList_tmp.ListID, "state":0}).All(&pEntryList);err!=nil{
 			return nil, err
 		}
 
 		//根据清单获得的Entry，寻找所有step，看是否有step的日期是今天，如果是就留下这条entry
 		for _, entry_tmp = range pEntryList{
 			//根据entryid查询所有step
-			if err = G_memSink.MC_Step.Find(bson.M{"entryid":entry_tmp.EntryID}).All(&step_list);err!=nil {
+			if err = G_memSink.MC_Step.Find(bson.M{"entryid":entry_tmp.EntryID}).Sort("sequence").All(&step_list);err!=nil {
 				return nil, err
 			}
+
+			fmt.Println(step_list)
+
 			singleSearchResp.Stepresp = make([]Common.StepResp, 0)
 			isToday = false
 			for _, step_tmp = range step_list{
@@ -155,12 +176,10 @@ func (memSink *MemSink)getTodayEntry(email string)(searchArr *[]Common.SearchRes
 		}
 	}
 
-
-
 	//tMemList
 	for _, tlist_tmp = range tmList{
 		//根据pmList获取对应的entry
-		if err = G_memSink.MC_Entry.Find(bson.M{"listid":tlist_tmp.ListID}).All(&tEntryList);err!=nil{
+		if err = G_memSink.MC_Entry.Find(bson.M{"listid":tlist_tmp.ListID, "state":0}).All(&tEntryList);err!=nil{
 			return nil, err
 		}
 
@@ -172,7 +191,7 @@ func (memSink *MemSink)getTodayEntry(email string)(searchArr *[]Common.SearchRes
 			}
 			singleSearchResp.Stepresp = make([]Common.StepResp, 0)
 			//根据entryid查询所有step
-			if err = G_memSink.MC_Step.Find(bson.M{"entryid":entry_tmp.EntryID}).All(&step_list);err!=nil {
+			if err = G_memSink.MC_Step.Find(bson.M{"entryid":entry_tmp.EntryID}).Sort("sequence").All(&step_list);err!=nil {
 				return nil, err
 			}
 
@@ -230,10 +249,40 @@ func checkIfInAWeek(date string)(isInWeek bool, err error){
 
 	if convTime.After(timeBeforeWeek) {
 		fmt.Println(date, convTime.After(timeBeforeWeek))
+		//在一周内
 		return true, nil
 	}else{
 		fmt.Println(fmt.Println(date, convTime.After(timeBeforeWeek)))
+		//不在一周内
 		return false, nil
+	}
+
+	return false, errors.New("Unknown time transform")
+}
+
+func checkIfTimeout(date string)(isInWeek bool, err error){
+
+	var(
+		timeTemplate string = "2006-01-02"
+		convTime time.Time
+		nowTime time.Time
+	)
+
+	//将date字符串转化成时间
+	if convTime, err = time.ParseInLocation(timeTemplate, date, time.Local);err!=nil{
+		return false, err
+	}
+
+	nowTime = time.Now()
+
+	if convTime.After(nowTime) {
+		//fmt.Println(date, convTime.After(timeBeforeWeek))
+		//在当前之后，没过期
+		return false, nil
+	}else{
+		//fmt.Println(fmt.Println(date, convTime.After(timeBeforeWeek)))
+		//已过期
+		return true, nil
 	}
 
 	return false, errors.New("Unknown time transform")
@@ -279,16 +328,17 @@ func (memSink *MemSink)getWeekEntry(email string)(searchArr *[]Common.SearchResp
 	//pMemList
 	for _, pList_tmp = range pmList{
 		//根据pmList获取对应的entry
-		if err = G_memSink.MC_Entry.Find(bson.M{"listid":pList_tmp.ListID}).All(&pEntryList);err!=nil{
+		if err = G_memSink.MC_Entry.Find(bson.M{"listid":pList_tmp.ListID, "state":0}).All(&pEntryList);err!=nil{
 			return nil, err
 		}
 
 		//根据清单获得的Entry，寻找所有step，看是否有step的日期是今天，如果是就留下这条entry
 		for _, entry_tmp = range pEntryList{
 			//根据entryid查询所有step
-			if err = G_memSink.MC_Step.Find(bson.M{"entryid":entry_tmp.EntryID}).All(&step_list);err!=nil {
+			if err = G_memSink.MC_Step.Find(bson.M{"entryid":entry_tmp.EntryID}).Sort("sequence").All(&step_list);err!=nil {
 				return nil, err
 			}
+
 			singleSearchResp.Stepresp = make([]Common.StepResp, 0)
 
 
@@ -323,7 +373,7 @@ func (memSink *MemSink)getWeekEntry(email string)(searchArr *[]Common.SearchResp
 	//tMemList
 	for _, tlist_tmp = range tmList{
 		//根据pmList获取对应的entry
-		if err = G_memSink.MC_Entry.Find(bson.M{"listid":tlist_tmp.ListID}).All(&tEntryList);err!=nil{
+		if err = G_memSink.MC_Entry.Find(bson.M{"listid":tlist_tmp.ListID, "state":0}).All(&tEntryList);err!=nil{
 			return nil, err
 		}
 
@@ -335,7 +385,7 @@ func (memSink *MemSink)getWeekEntry(email string)(searchArr *[]Common.SearchResp
 			}
 			singleSearchResp.Stepresp = make([]Common.StepResp, 0)
 			//根据entryid查询所有step
-			if err = G_memSink.MC_Step.Find(bson.M{"entryid":entry_tmp.EntryID}).All(&step_list);err!=nil {
+			if err = G_memSink.MC_Step.Find(bson.M{"entryid":entry_tmp.EntryID}).Sort("sequence").All(&step_list);err!=nil {
 				return nil, err
 			}
 
@@ -368,6 +418,367 @@ func (memSink *MemSink)getWeekEntry(email string)(searchArr *[]Common.SearchResp
 	return &searchRespArr, nil
 
 }
+
+//查询已完成的 done = 1 tag = 2
+func (memSink *MemSink)getHasDoneEntry(email string)(searchArr *[]Common.SearchRespData, err error){
+	var(
+		pmList []Common.PMemList
+		tmList []Common.TMemList
+		pEntryList []Common.Entry
+		tEntryList []Common.Entry
+		step_list   []Common.Step
+		pList_tmp   Common.PMemList
+		tlist_tmp   Common.TMemList
+		entry_tmp   Common.Entry
+		step_tmp    Common.Step
+		isDone		bool
+		//resp
+		singleSearchResp Common.SearchRespData
+		singleStepResp   Common.StepResp
+		searchRespArr    []Common.SearchRespData
+	)
+
+
+	//根据email从PMemList和TmemList里查询清单id，因为email=id=userid，所以可以这样操作
+	if err = G_memSink.MC_PMemList.Find(bson.M{"userid":email}).All(&pmList);err!=nil{
+		return nil , err
+	}
+
+	if err = G_memSink.MC_TMemList.Find(bson.M{"userid":email}).All(&tmList);err!=nil{
+		return nil, err
+	}
+
+	//然后根据获得的清单id，获取对应的entry
+	//pMemList
+	for _, pList_tmp = range pmList{
+		//根据pmList获取对应的entry
+		if err = G_memSink.MC_Entry.Find(bson.M{"listid":pList_tmp.ListID, "state":0}).All(&pEntryList);err!=nil{
+			return nil, err
+		}
+
+		//根据清单获得的Entry，寻找所有step，看是否有step的日期是今天，如果是就留下这条entry
+		for _, entry_tmp = range pEntryList{
+			//根据entryid查询所有step
+			if err = G_memSink.MC_Step.Find(bson.M{"entryid":entry_tmp.EntryID}).Sort("sequence").All(&step_list);err!=nil {
+				return nil, err
+			}
+			singleSearchResp.Stepresp = make([]Common.StepResp, 0)
+
+			isDone = true
+
+			//如果没有step，则没有已经done完这种说法
+			if len(step_list) == 0{
+				isDone = false
+			}
+
+			//判断是否所有step都done了
+			for _, step_tmp = range step_list {
+				if(step_tmp.Done==0){
+					isDone = false
+					break
+				}
+			}
+
+			//如果所有step都done了，那么将entry和对应的step打包返回
+			if isDone {
+				singleSearchResp.Entryresp.EntryID = entry_tmp.EntryID
+				singleSearchResp.Entryresp.Entryversion = entry_tmp.Version
+				singleSearchResp.Entryresp.Entryname = entry_tmp.EntryName
+
+				for _, step_tmp = range step_list {
+					singleStepResp.Date = step_tmp.Date
+					singleStepResp.StepID = step_tmp.StepID
+					singleStepResp.Importance = step_tmp.Importance
+					singleSearchResp.Stepresp = append(singleSearchResp.Stepresp, singleStepResp)
+				}
+				searchRespArr = append(searchRespArr, singleSearchResp)
+			}
+		}
+	}
+
+	//tMemList
+	for _, tlist_tmp = range tmList{
+		//根据pmList获取对应的entry
+		if err = G_memSink.MC_Entry.Find(bson.M{"listid":tlist_tmp.ListID, "state":0}).All(&tEntryList);err!=nil{
+			return nil, err
+		}
+
+		//根据清单获得的Entry，寻找所有step，看是否有step的日期是今天，如果是就留下这条entry
+		for _, entry_tmp = range tEntryList{
+			singleSearchResp.Stepresp = make([]Common.StepResp, 0)
+			//根据entryid查询所有step
+			if err = G_memSink.MC_Step.Find(bson.M{"entryid":entry_tmp.EntryID}).Sort("sequence").All(&step_list);err!=nil {
+				return nil, err
+			}
+
+			isDone = true
+
+			//如果没有step，则没有已经done完这种说法
+			if len(step_list) == 0{
+				isDone = false
+			}
+
+			//判断是否所有step都done了
+			for _, step_tmp = range step_list {
+				if(step_tmp.Done==0){
+					isDone = false
+					break
+				}
+			}
+
+			//如果存在一周的step，那么将entry和对应的step打包返回
+			if isDone {
+				singleSearchResp.Entryresp.EntryID = entry_tmp.EntryID
+				singleSearchResp.Entryresp.Entryversion = entry_tmp.Version
+				singleSearchResp.Entryresp.Entryname = entry_tmp.EntryName
+
+				for _, step_tmp = range step_list{
+					singleStepResp.Date = step_tmp.Date
+					singleStepResp.StepID = step_tmp.StepID
+					singleStepResp.Importance = step_tmp.Importance
+					singleSearchResp.Stepresp = append(singleSearchResp.Stepresp, singleStepResp)
+				}
+				searchRespArr = append(searchRespArr, singleSearchResp)
+			}
+		}
+	}
+
+	//返回数据
+	return &searchRespArr, nil
+}
+
+//searchByTag 3 已删除
+func (memSink *MemSink)getHasDeleteData(email string)(searchArr *[]Common.SearchRespData, err error){
+	var(
+		pmList []Common.PMemList
+		tmList []Common.TMemList
+		pEntryList []Common.Entry
+		tEntryList []Common.Entry
+		step_list   []Common.Step
+		pList_tmp   Common.PMemList
+		tlist_tmp   Common.TMemList
+		entry_tmp   Common.Entry
+		step_tmp    Common.Step
+		isDelete		bool
+		//resp
+		singleSearchResp Common.SearchRespData
+		singleStepResp   Common.StepResp
+		searchRespArr    []Common.SearchRespData
+	)
+
+	//根据email从PMemList和TmemList里查询清单id，因为email=id=userid，所以可以这样操作
+	if err = G_memSink.MC_PMemList.Find(bson.M{"userid":email}).All(&pmList);err!=nil{
+		return nil , err
+	}
+
+	if err = G_memSink.MC_TMemList.Find(bson.M{"userid":email}).All(&tmList);err!=nil{
+		return nil, err
+	}
+
+	//然后根据获得的清单id，获取对应的entry
+	//pMemList
+	for _, pList_tmp = range pmList{
+		//根据pmList获取对应的entry
+		if err = G_memSink.MC_Entry.Find(bson.M{"listid":pList_tmp.ListID, "state":1}).All(&pEntryList);err!=nil{
+			return nil, err
+		}
+
+		//根据清单获得的Entry，寻找所有step，看是否有step的日期是今天，如果是就留下这条entry
+		for _, entry_tmp = range pEntryList{
+			//根据entryid查询所有step
+			if err = G_memSink.MC_Step.Find(bson.M{"entryid":entry_tmp.EntryID}).Sort("sequence").All(&step_list);err!=nil {
+				return nil, err
+			}
+			singleSearchResp.Stepresp = make([]Common.StepResp, 0)
+
+			if entry_tmp.State == 1{
+				isDelete = true
+			}else{
+				isDelete = false
+			}
+
+			//如果所有step都done了，那么将entry和对应的step打包返回
+			if isDelete {
+				singleSearchResp.Entryresp.EntryID = entry_tmp.EntryID
+				singleSearchResp.Entryresp.Entryversion = entry_tmp.Version
+				singleSearchResp.Entryresp.Entryname = entry_tmp.EntryName
+
+				for _, step_tmp = range step_list {
+					singleStepResp.Date = step_tmp.Date
+					singleStepResp.StepID = step_tmp.StepID
+					singleStepResp.Importance = step_tmp.Importance
+					singleSearchResp.Stepresp = append(singleSearchResp.Stepresp, singleStepResp)
+				}
+
+				searchRespArr = append(searchRespArr, singleSearchResp)
+			}
+		}
+	}
+
+	//tMemList
+	for _, tlist_tmp = range tmList{
+		//根据pmList获取对应的entry
+		if err = G_memSink.MC_Entry.Find(bson.M{"listid":tlist_tmp.ListID, "state":1}).All(&tEntryList);err!=nil{
+			return nil, err
+		}
+
+		//根据清单获得的Entry，寻找所有step，看是否有step的日期是今天，如果是就留下这条entry
+		for _, entry_tmp = range tEntryList{
+
+			singleSearchResp.Stepresp = make([]Common.StepResp, 0)
+			//根据entryid查询所有step
+			if err = G_memSink.MC_Step.Find(bson.M{"entryid":entry_tmp.EntryID}).Sort("sequence").All(&step_list);err!=nil {
+				return nil, err
+			}
+
+			if entry_tmp.State == 1{
+				isDelete = true
+			}else{
+				isDelete = false
+			}
+
+			//如果存在一周的step，那么将entry和对应的step打包返回
+			if isDelete {
+				singleSearchResp.Entryresp.EntryID = entry_tmp.EntryID
+				singleSearchResp.Entryresp.Entryversion = entry_tmp.Version
+				singleSearchResp.Entryresp.Entryname = entry_tmp.EntryName
+
+				for _, step_tmp = range step_list{
+					singleStepResp.Date = step_tmp.Date
+					singleStepResp.StepID = step_tmp.StepID
+					singleStepResp.Importance = step_tmp.Importance
+					singleSearchResp.Stepresp = append(singleSearchResp.Stepresp, singleStepResp)
+				}
+				searchRespArr = append(searchRespArr, singleSearchResp)
+			}
+		}
+	}
+
+	//返回数据
+	return &searchRespArr, nil
+}
+
+//searchByTag 4 已过期
+func (memSink *MemSink)getHasTimeOutData(email string)(searchArr *[]Common.SearchRespData, err error){
+	var(
+		today string
+		now_time time.Time
+		pmList []Common.PMemList
+		tmList []Common.TMemList
+		pEntryList []Common.Entry
+		tEntryList []Common.Entry
+		step_list   []Common.Step
+		pList_tmp   Common.PMemList
+		tlist_tmp   Common.TMemList
+		entry_tmp   Common.Entry
+		step_tmp    Common.Step
+		isTimeout		bool
+		//resp
+		singleSearchResp Common.SearchRespData
+		singleStepResp   Common.StepResp
+		searchRespArr    []Common.SearchRespData
+	)
+
+	//获取今天日期 如2015-02-01
+	now_time = time.Now()
+	today = now_time.String()[:10]
+	fmt.Println("today:",today)
+
+	//根据email从PMemList和TmemList里查询清单id，因为email=id=userid，所以可以这样操作
+	if err = G_memSink.MC_PMemList.Find(bson.M{"userid":email}).All(&pmList);err!=nil{
+		return nil , err
+	}
+
+	if err = G_memSink.MC_TMemList.Find(bson.M{"userid":email}).All(&tmList);err!=nil{
+		return nil, err
+	}
+
+	//然后根据获得的清单id，获取对应的entry
+	//pMemList
+	for _, pList_tmp = range pmList{
+		//根据pmList获取对应的entry
+		if err = G_memSink.MC_Entry.Find(bson.M{"listid":pList_tmp.ListID, "state":0}).All(&pEntryList);err!=nil{
+			return nil, err
+		}
+
+		//根据清单获得的Entry，寻找所有step，看是否有step的日期是今天，如果是就留下这条entry
+		for _, entry_tmp = range pEntryList{
+			//根据entryid查询所有step
+			if err = G_memSink.MC_Step.Find(bson.M{"entryid":entry_tmp.EntryID}).Sort("sequence").All(&step_list);err!=nil {
+				return nil, err
+			}
+			singleSearchResp.Stepresp = make([]Common.StepResp, 0)
+
+			isTimeout = false
+			//判断是否过期
+			for _, step_tmp = range step_list{
+				if isTimeout, err = checkIfTimeout(step_tmp.Date);err==nil&&isTimeout{
+					break
+				}
+			}
+
+			//如果存在一周的step，那么将entry和对应的step打包返回
+			if isTimeout {
+				singleSearchResp.Entryresp.EntryID = entry_tmp.EntryID
+				singleSearchResp.Entryresp.Entryversion = entry_tmp.Version
+				singleSearchResp.Entryresp.Entryname = entry_tmp.EntryName
+
+				for _, step_tmp = range step_list{
+					singleStepResp.Date = step_tmp.Date
+					singleStepResp.StepID = step_tmp.StepID
+					singleStepResp.Importance = step_tmp.Importance
+					singleSearchResp.Stepresp = append(singleSearchResp.Stepresp, singleStepResp)
+				}
+
+				searchRespArr = append(searchRespArr, singleSearchResp)
+			}
+		}
+	}
+
+	//tMemList
+	for _, tlist_tmp = range tmList{
+		//根据pmList获取对应的entry
+		if err = G_memSink.MC_Entry.Find(bson.M{"listid":tlist_tmp.ListID, "state":0}).All(&tEntryList);err!=nil{
+			return nil, err
+		}
+
+		//根据清单获得的Entry，寻找所有step，看是否有step的日期是今天，如果是就留下这条entry
+		for _, entry_tmp = range tEntryList{
+			singleSearchResp.Stepresp = make([]Common.StepResp, 0)
+			//根据entryid查询所有step
+			if err = G_memSink.MC_Step.Find(bson.M{"entryid":entry_tmp.EntryID}).Sort("sequence").All(&step_list);err!=nil {
+				return nil, err
+			}
+
+			isTimeout = false
+			//判断是否过期
+			for _, step_tmp = range step_list{
+				if isTimeout, err = checkIfTimeout(step_tmp.Date);err==nil&&isTimeout{
+					break
+				}
+			}
+
+			//如果存在一周的step，那么将entry和对应的step打包返回
+			if isTimeout {
+				singleSearchResp.Entryresp.EntryID = entry_tmp.EntryID
+				singleSearchResp.Entryresp.Entryversion = entry_tmp.Version
+				singleSearchResp.Entryresp.Entryname = entry_tmp.EntryName
+
+				for _, step_tmp = range step_list{
+					singleStepResp.Date = step_tmp.Date
+					singleStepResp.StepID = step_tmp.StepID
+					singleStepResp.Importance = step_tmp.Importance
+					singleSearchResp.Stepresp = append(singleSearchResp.Stepresp, singleStepResp)
+				}
+				searchRespArr = append(searchRespArr, singleSearchResp)
+			}
+		}
+	}
+
+	//返回数据
+	return &searchRespArr, nil
+}
+
 
 
 //根据日期查询
@@ -402,14 +813,14 @@ func (memSink *MemSink)getDateEntry(email string, date string)(searchArr *[]Comm
 	//pMemList
 	for _, pList_tmp = range pmList{
 		//根据pmList获取对应的entry
-		if err = G_memSink.MC_Entry.Find(bson.M{"listid":pList_tmp.ListID}).All(&pEntryList);err!=nil{
+		if err = G_memSink.MC_Entry.Find(bson.M{"listid":pList_tmp.ListID,"state":0}).All(&pEntryList);err!=nil{
 			return nil, err
 		}
 
 		//根据清单获得的Entry，寻找所有step，看是否有step的日期是今天，如果是就留下这条entry
 		for _, entry_tmp = range pEntryList{
 			//根据entryid查询所有step
-			if err = G_memSink.MC_Step.Find(bson.M{"entryid":entry_tmp.EntryID}).All(&step_list);err!=nil {
+			if err = G_memSink.MC_Step.Find(bson.M{"entryid":entry_tmp.EntryID}).Sort("sequence").All(&step_list);err!=nil {
 				return nil, err
 			}
 			singleSearchResp.Stepresp = make([]Common.StepResp, 0)
@@ -444,7 +855,7 @@ func (memSink *MemSink)getDateEntry(email string, date string)(searchArr *[]Comm
 	//tMemList
 	for _, tlist_tmp = range tmList{
 		//根据pmList获取对应的entry
-		if err = G_memSink.MC_Entry.Find(bson.M{"listid":tlist_tmp.ListID}).All(&tEntryList);err!=nil{
+		if err = G_memSink.MC_Entry.Find(bson.M{"listid":tlist_tmp.ListID, "state":0}).All(&tEntryList);err!=nil{
 			return nil, err
 		}
 
@@ -456,7 +867,7 @@ func (memSink *MemSink)getDateEntry(email string, date string)(searchArr *[]Comm
 			}
 			singleSearchResp.Stepresp = make([]Common.StepResp, 0)
 			//根据entryid查询所有step
-			if err = G_memSink.MC_Step.Find(bson.M{"entryid":entry_tmp.EntryID}).All(&step_list);err!=nil {
+			if err = G_memSink.MC_Step.Find(bson.M{"entryid":entry_tmp.EntryID}).Sort("sequence").All(&step_list);err!=nil {
 				return nil, err
 			}
 
@@ -554,7 +965,7 @@ func (memSink *MemSink)getEntryAndStep(listid string)(resp *[]Common.EntryAndSte
 	)
 
 	//查到listid 对应的entry
-	if err = memSink.MC_Entry.Find(bson.M{"listid":listid}).All(&entryResult);err!=nil{
+	if err = memSink.MC_Entry.Find(bson.M{"listid":listid, "state":0}).All(&entryResult);err!=nil{
 		return nil,err
 	}
 
@@ -566,7 +977,7 @@ func (memSink *MemSink)getEntryAndStep(listid string)(resp *[]Common.EntryAndSte
 		singleResp.EntryVersion = entryTmp.Version
 		singleResp.StepArr = make([]Common.SingleStep, 0)
 
-		if err = memSink.MC_Step.Find(bson.M{"entryid":entryTmp.EntryID}).All(&stepResult);err!=nil{
+		if err = memSink.MC_Step.Find(bson.M{"entryid":entryTmp.EntryID}).Sort("sequence").All(&stepResult);err!=nil{
 			return nil, err
 		}
 
@@ -622,6 +1033,7 @@ func (memSink *MemSink)addPMemList(email string, listName string)(pmListResp *Co
 	insertPMemList.UserID  = email
 
 	if err = memSink.MC_PMemList.Insert(&insertPMemList);err!=nil{
+		fmt.Println(err.Error())
 		return nil, err
 	}
 
@@ -675,7 +1087,7 @@ func (memSink *MemSink)getSteps(entryID string)(result []Common.Step, err error)
 
 	)
 
-	if err = memSink.MC_Step.Find(bson.M{"entryid":entryID}).All(&result);err!=nil{
+	if err = memSink.MC_Step.Find(bson.M{"entryid":entryID}).Sort("sequence").All(&result);err!=nil{
 		return nil, err
 	}
 
@@ -735,7 +1147,7 @@ func (memSink *MemSink)saveEntry(data *Common.ReqData)(isOK bool , entryID strin
 		iEntry.ListID = data.ListID   //要不要检查下存不存在？
 		iEntry.EntryName = data.EntryName
 		iEntry.Version = data.Version
-		iEntry.State = data.State
+		iEntry.State = 0
 		if err = G_memSink.MC_Entry.Insert(&iEntry);err!=nil{
 			goto ERR
 		}
@@ -754,7 +1166,7 @@ func (memSink *MemSink)saveEntry(data *Common.ReqData)(isOK bool , entryID strin
 
 		//先检查entryid是否存在，不存在则可能被删除，让前端确认
 		//抢分布式锁，删除旧step，然后插入新step
-		if err = G_memSink.MC_Entry.Find(bson.M{"entryid":data.EntryID}).All(&queryEntry);err!=nil{
+		if err = G_memSink.MC_Entry.Find(bson.M{"entryid":data.EntryID, "state":0}).All(&queryEntry);err!=nil{
 			goto ERR
 		}
 
@@ -789,7 +1201,7 @@ func (memSink *MemSink)saveEntry(data *Common.ReqData)(isOK bool , entryID strin
 		}
 
 		//查询旧step
-		if err = G_memSink.MC_Step.Find(bson.M{"entryid":data.EntryID}).All(&oldSteps);err!=nil{
+		if err = G_memSink.MC_Step.Find(bson.M{"entryid":data.EntryID}).Sort("sequence").All(&oldSteps);err!=nil{
 			goto ERR
 		}
 
@@ -830,9 +1242,38 @@ func (memSink *MemSink)saveEntry(data *Common.ReqData)(isOK bool , entryID strin
 func (memSink *MemSink)deleteEntry(entryID string)(isOk bool, err error){
 
 	var(
-
+		iEntry Common.Entry
+		queryEntry []Common.Entry
 	)
 
+//改成update state = 1
+	if err = memSink.MC_Entry.Find(bson.M{"entryid":entryID}).All(&queryEntry);err!=nil{
+		return false, err
+	}
+
+	if len(queryEntry) == 0{
+		return false, Common.ERR_NO_FOUND_ACCOUNT
+	}
+
+	if len(queryEntry) > 1{
+		fmt.Println("存在多个相同条目", queryEntry)
+	}
+
+	iEntry = queryEntry[0]
+	iEntry.State = 1
+
+	if err = memSink.MC_Entry.Update(bson.M{"entryid":iEntry.EntryID}, bson.M{
+		"entryid":iEntry.EntryID,
+		"entryname":iEntry.EntryName,
+		"listid":iEntry.ListID,
+		"state":1,
+		"version":iEntry.Version});err!=nil{
+			return false, err
+	}
+
+		return true, nil
+
+/*
 	if _, err = memSink.MC_Entry.RemoveAll(bson.M{"entryid":entryID});err!=nil{
 		return false, err
 	}
@@ -842,6 +1283,7 @@ func (memSink *MemSink)deleteEntry(entryID string)(isOk bool, err error){
 	}
 
 	return true, nil
+*/
 
 }
 
@@ -892,8 +1334,10 @@ func (memSink *MemSink)addTMember(tMemListID string, email string)(isok bool , e
 		return false, errors.New("ID不存在")
 	}
 
+	//确保不会将同一个用户添加多遍
+
 	if err = memSink.MC_TMemList.Insert(&Common.TMemList{
-		ID: tMemListID+email,
+		ID: tMemListID+"/"+email,
 		ListID:tMemListID,
 		ListName:tMemList[0].ListName,
 		UserID:email,
@@ -927,6 +1371,35 @@ func (memSink *MemSink)deleteTMember(tMemListID string, email string)(isok bool 
 	}
 
 	return true, nil
+}
+
+//16. 删除个人清单
+func (memSink *MemSink)deletePMemList(pMemListID string)(isok bool , err error){
+
+	isok = false
+
+	if _, err = memSink.MC_PMemList.RemoveAll(bson.M{"listid":pMemListID});err!=nil{
+		goto ERR
+	}
+
+	return true, nil
+
+	ERR:
+		return false, err
+}
+
+//17. 删除团队清单
+func (memSink *MemSink)deleteTMemList(tMemListID string)(isok bool, err error){
+	isok = false
+
+	if _, err = memSink.MC_TMemList.RemoveAll(bson.M{"listid":tMemListID});err!=nil{
+		goto ERR
+	}
+
+	return true, nil
+
+ERR:
+	return false, err
 }
 
 func InitMemSink()(err error){

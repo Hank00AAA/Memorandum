@@ -35,6 +35,7 @@ type PList struct{
 type SignInResp struct{
 	Errno int  `json:"errno"`
 	Data  interface{} `json:"data"`
+	Token string `json:"token"`
 }
 
 func BuildSignInResp(errno int, listArr interface{})(resp []byte, err error){
@@ -46,6 +47,24 @@ func BuildSignInResp(errno int, listArr interface{})(resp []byte, err error){
 
 	response.Errno = errno
 	response.Data = listArr
+
+	//2. 序列化
+	resp, err = json.Marshal(response)
+
+	return
+
+}
+
+func BuildSignInRespWithToken(errno int, listArr interface{}, token string)(resp []byte, err error){
+
+	//1. 定义Resp
+	var(
+		response SignInResp
+	)
+
+	response.Errno = errno
+	response.Data = listArr
+	response.Token = token
 
 	//2. 序列化
 	resp, err = json.Marshal(response)
@@ -73,8 +92,8 @@ type EntryResp struct{
 }
 
 type SearchRespData struct{
-	Entryresp EntryResp
-	Stepresp  []StepResp
+	Entryresp EntryResp  `json:"entryresp"`
+	Stepresp  []StepResp  `json:"stepresp"`
 }
 
 func BuildSearchByTagResp(errno int, data interface{})(resp []byte, err error){
@@ -92,8 +111,8 @@ func BuildSearchByTagResp(errno int, data interface{})(resp []byte, err error){
 
 //5. 查询个人备忘录清单
 type PListInfo struct{
-	PListID string
-	PListName string
+	PListID string  `json:"plistid"`
+	PListName string `json:"plistname"`
 }
 
 func BuildGetPMemListResp(errno int, data interface{})(resp []byte, err error){
@@ -111,13 +130,13 @@ func BuildGetPMemListResp(errno int, data interface{})(resp []byte, err error){
 
 //6. 查询团队备忘录清单
 type TListInfo struct{
-	TListID string
-	TListName string
+	TListID string `json:"tlistid"`
+	TListName string `json:"tlistname"`
 }
 
 type Resp struct{
-	Errno int
-	Data  interface{}
+	Errno int    `json:"errno"`
+	Data  interface{} `json:"data"`
 }
 
 func BuildGetTMemListResp(errno int, data interface{})(resp []byte, err error){
@@ -134,16 +153,16 @@ func BuildGetTMemListResp(errno int, data interface{})(resp []byte, err error){
 
 //7. 查询条目
 type SingleStep struct{
-	StepID string
-	Date   string
-	Importance int
+	StepID string  `json:"stepid"`
+	Date   string  `json:"date"`
+	Importance int `json:"importance"`
 }
 
 type EntryAndStep struct{
-	EntryID string
-	EntryName string
-	EntryVersion int
-	StepArr []SingleStep
+	EntryID string      `json:"entryid"`
+	EntryName string	`json:"entryname"`
+	EntryVersion int    `json:"version"`
+	StepArr []SingleStep `json:"steparr"`
 }
 
 func BuildGetEntryResp(errno int, data interface{})(resp []byte, err error){
@@ -160,8 +179,8 @@ func BuildGetEntryResp(errno int, data interface{})(resp []byte, err error){
 
 //8. 添加个人清单
 type AddPMLResp struct{
-	ListID string
-	ListName string
+	ListID string   `json:"listid"`
+	ListName string `json:"listname"`
 }
 
 func BuildAddPMemListResp(errno int, data interface{})(resp []byte, err error){
@@ -177,8 +196,8 @@ func BuildAddPMemListResp(errno int, data interface{})(resp []byte, err error){
 
 //9. 添加团队清单
 type AddTMLResp struct{
-	ListID string
-	ListName string
+	ListID string `json:"listid"`
+	ListName string `json:"listname"`
 }
 
 func BuildAddTMemListResp(errno int, data interface{})(resp []byte, err error){
@@ -215,9 +234,11 @@ type ReqData struct{
 	EntryID string `json:"entryid"`
 	EntryName string `json:"entryname"`
 	ListID string `json:"listid"`
-	State int `json:"state"`
+	//State int `json:"state"`
 	Version int    `json:"version"`
 	StepArr []Step  `json:"steps"`
+	Email string `json:"email"`
+	Token string `json:"token"`
 }
 
 type ReqResp struct{

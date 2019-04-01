@@ -2,6 +2,7 @@ package LogicProcessor
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/Hank00AAA/Memorandum/Common"
 	"io/ioutil"
@@ -21,6 +22,52 @@ var(
 
 // 1. 注册服务接口
 func handleSignUp(resp http.ResponseWriter, req *http.Request){
+
+	var(
+		err error
+		bytes []byte
+		respbytes []byte
+		password string
+		email string
+	)
+
+	resp.Header().Set("Access-Control-Allow-Origin", "*")
+	resp.Header().Add("Access-Control-Allow-Headers", "Content-Type")
+	resp.Header().Set("content-type", "application/json")
+	if req.Method == "OPTIONS"{
+		if bytes, err = Common.BuildUploadFileResp(0,[]string{"nil"});err==nil{
+			resp.Write(bytes)
+			fmt.Println("return Options")
+			return
+		}
+	}else{
+		fmt.Println(req.Method)
+	}
+
+	//解析表单
+	if err = req.ParseMultipartForm(32<<20);err!=nil{
+		goto ERR
+	}
+
+	email = req.PostForm.Get("email")
+	password = req.PostForm.Get("password")
+
+	if err = G_memSink.SingUp(email, password);err!=nil{
+		goto ERR
+	}
+
+
+	if respbytes, err = Common.BuildSignInResp(0, nil);err==nil{
+		resp.Write(respbytes)
+	}
+
+	return
+ERR:
+	fmt.Println(err)
+	//异常应答
+	if respbytes, err = Common.BuildSignInResp(-1, err.Error());err==nil{
+		resp.Write(respbytes)
+	}
 
 }
 
@@ -47,7 +94,24 @@ func handleSignIn(resp http.ResponseWriter, req *http.Request){
 		plist_temp Common.PMemList
 		plist_resp []Common.PList
 		temp Common.PList
+		bytes []byte
+		token string
+		isOK bool
 	)
+
+	resp.Header().Set("Access-Control-Allow-Origin", "*")
+	resp.Header().Add("Access-Control-Allow-Headers", "Content-Type")
+	resp.Header().Set("content-type", "application/json")
+	if req.Method == "OPTIONS"{
+		if bytes, err = Common.BuildUploadFileResp(0,[]string{"nil"});err==nil{
+			resp.Write(bytes)
+			fmt.Println("return Options")
+			return
+		}
+	}else{
+		fmt.Println(req.Method)
+	}
+
 
 	plist_resp = make([]Common.PList, 0)
 
@@ -81,10 +145,18 @@ func handleSignIn(resp http.ResponseWriter, req *http.Request){
 		goto ERR
 	}
 
+	if token, isOK, err  = BindEmailWithNewToken(email);err!=nil||isOK==false{
+		if isOK == false{
+			err = errors.New("绑定token失败")
+		}
+		goto ERR
+	}
+
 	//查询个人清单
 	if plist, err = G_memSink.getPMListByUserID(userID);err!=nil{
 		goto ERR
 	}
+
 
 	//生成应答报文
 	fmt.Println(*plist)
@@ -95,7 +167,7 @@ func handleSignIn(resp http.ResponseWriter, req *http.Request){
 		fmt.Println("finish",temp)
 	}
 
-	if respbytes, err = Common.BuildSignInResp(0, plist_resp);err==nil{
+	if respbytes, err = Common.BuildSignInRespWithToken(0, plist_resp, token);err==nil{
 		resp.Write(respbytes)
 	}
 
@@ -104,13 +176,13 @@ func handleSignIn(resp http.ResponseWriter, req *http.Request){
 	ERR:
 		fmt.Println(err)
 		//异常应答
-		if respbytes, err = Common.BuildSignInResp(-1, err.Error());err==nil{
+		if respbytes, err = Common.BuildSignInRespWithToken(-1, err.Error(), "");err==nil{
 			resp.Write(respbytes)
 		}
 }
 
 //3. 根据标签查询条目
-//根据tag进行查询 0:今天 1:最近七天
+//根据tag进行查询 0:今天 1:最近七天 2：已完成的 3：已删除的 4：已过期的
 //根据查询结果返回
 //POST方法 FORM_DATA
 //url:http://localhost:9000/searchByTag?email=111@qq.com&tag=1
@@ -122,7 +194,22 @@ func handleSearchByTag(resp http.ResponseWriter, req *http.Request){
 		tag string
 		email string
 		searchArr *[]Common.SearchRespData
+		token string
+		isOK bool
 	)
+
+	resp.Header().Set("Access-Control-Allow-Origin", "*")
+	resp.Header().Add("Access-Control-Allow-Headers", "Content-Type")
+	resp.Header().Set("content-type", "application/json")
+	if req.Method == "OPTIONS"{
+		if bytes, err = Common.BuildUploadFileResp(0,[]string{"nil"});err==nil{
+			resp.Write(bytes)
+			fmt.Println("return Options")
+			return
+		}
+	}else{
+		fmt.Println(req.Method)
+	}
 
 	//解析表单
 	if err = req.ParseMultipartForm(32<<20);err!=nil{
@@ -132,8 +219,14 @@ func handleSearchByTag(resp http.ResponseWriter, req *http.Request){
 	//email   tag
 	email = req.PostForm.Get("email")
 	tag = req.PostForm.Get("tag")
-	fmt.Println("email:",email)
-	fmt.Println("tag",tag)
+	token = req.PostForm.Get("token")
+	//检查token
+	if isOK, err = CheckToken(email, token);err!=nil||isOK==false{
+		if isOK == false{
+			err = errors.New("Token isOK = false")
+		}
+		goto ERR
+	}
 
 	searchArr = nil
 	if tag == "0"{
@@ -142,6 +235,18 @@ func handleSearchByTag(resp http.ResponseWriter, req *http.Request){
 		}
 	}else if tag == "1"{
 		if searchArr,err = G_memSink.getWeekEntry(email);err!=nil{
+			goto ERR
+		}
+	}else if tag == "2"{
+		if searchArr, err = G_memSink.getHasDoneEntry(email);err!=nil{
+			goto ERR
+		}
+	}else if tag == "3"{
+		if searchArr, err = G_memSink.getHasDeleteData(email);err!=nil{
+			goto ERR
+		}
+	}else if tag =="4"{
+		if searchArr, err = G_memSink.getHasTimeOutData(email);err!=nil{
 			goto ERR
 		}
 	}
@@ -170,7 +275,22 @@ func handleSearchByDate(resp http.ResponseWriter, req *http.Request){
 		email string
 		date string
 		searchArr *[]Common.SearchRespData
+		token string
+		isOK bool
 	)
+
+	resp.Header().Set("Access-Control-Allow-Origin", "*")
+	resp.Header().Add("Access-Control-Allow-Headers", "Content-Type")
+	resp.Header().Set("content-type", "application/json")
+	if req.Method == "OPTIONS"{
+		if bytes, err = Common.BuildUploadFileResp(0,[]string{"nil"});err==nil{
+			resp.Write(bytes)
+			fmt.Println("return Options")
+			return
+		}
+	}else{
+		fmt.Println(req.Method)
+	}
 
 	//解析表单
 	if err = req.ParseMultipartForm(32<<20);err!=nil{
@@ -179,6 +299,14 @@ func handleSearchByDate(resp http.ResponseWriter, req *http.Request){
 
 	email = req.PostForm.Get("email")
 	date  = req.PostForm.Get("date")
+	token = req.PostForm.Get("token")
+	//检查token
+	if isOK, err = CheckToken(email, token);err!=nil||isOK==false{
+		if isOK == false{
+			err = errors.New("Token isOK = false")
+		}
+		goto ERR
+	}
 
 	if searchArr, err = G_memSink.getDateEntry(email, date);err!=nil{
 		goto ERR
@@ -208,7 +336,22 @@ func handleGetPMemList(resp http.ResponseWriter, req *http.Request){
 		bytes []byte
 		email string
 		result *[]Common.PListInfo
+		token string
+		isOK bool
 	)
+
+	resp.Header().Set("Access-Control-Allow-Origin", "*")
+	resp.Header().Add("Access-Control-Allow-Headers", "Content-Type")
+	resp.Header().Set("content-type", "application/json")
+	if req.Method == "OPTIONS"{
+		if bytes, err = Common.BuildUploadFileResp(0,[]string{"nil"});err==nil{
+			resp.Write(bytes)
+			fmt.Println("return Options")
+			return
+		}
+	}else{
+		fmt.Println(req.Method)
+	}
 
 	//解析表单
 	if err = req.ParseMultipartForm(32<<20);err!=nil{
@@ -216,7 +359,14 @@ func handleGetPMemList(resp http.ResponseWriter, req *http.Request){
 	}
 
 	email = req.PostForm.Get("email")
-	fmt.Println(email)
+	token = req.PostForm.Get("token")
+	//检查token
+	if isOK, err = CheckToken(email, token);err!=nil||isOK==false{
+		if isOK == false{
+			err = errors.New("Token isOK = false")
+		}
+		goto ERR
+	}
 
 	if result ,err = G_memSink.getPMemList(email);err!=nil{
 		goto ERR
@@ -245,7 +395,22 @@ func handleGetTMemList(resp http.ResponseWriter, req *http.Request){
 		bytes []byte
 		email string
 		result *[]Common.TListInfo
+		token string
+		isOK bool
 	)
+
+	resp.Header().Set("Access-Control-Allow-Origin", "*")
+	resp.Header().Add("Access-Control-Allow-Headers", "Content-Type")
+	resp.Header().Set("content-type", "application/json")
+	if req.Method == "OPTIONS"{
+		if bytes, err = Common.BuildUploadFileResp(0,[]string{"nil"});err==nil{
+			resp.Write(bytes)
+			fmt.Println("return Options")
+			return
+		}
+	}else{
+		fmt.Println(req.Method)
+	}
 
 	//解析表单
 	if err = req.ParseMultipartForm(32<<20);err!=nil{
@@ -253,7 +418,14 @@ func handleGetTMemList(resp http.ResponseWriter, req *http.Request){
 	}
 
 	email = req.PostForm.Get("email")
-	fmt.Println(email)
+	token = req.PostForm.Get("token")
+	//检查token
+	if isOK, err = CheckToken(email, token);err!=nil||isOK==false{
+		if isOK == false{
+			err = errors.New("Token isOK = false")
+		}
+		goto ERR
+	}
 
 	if result ,err = G_memSink.getTMemList(email);err!=nil{
 		goto ERR
@@ -283,7 +455,23 @@ func handleGetEntry(resp http.ResponseWriter, req *http.Request){
 		listID string
 		resps *[]Common.EntryAndStep
 		bytes []byte
+		token string
+		isOK bool
+		email string
 	)
+
+	resp.Header().Set("Access-Control-Allow-Origin", "*")
+	resp.Header().Add("Access-Control-Allow-Headers", "Content-Type")
+	resp.Header().Set("content-type", "application/json")
+	if req.Method == "OPTIONS"{
+		if bytes, err = Common.BuildUploadFileResp(0,[]string{"nil"});err==nil{
+			resp.Write(bytes)
+			fmt.Println("return Options")
+			return
+		}
+	}else{
+		fmt.Println(req.Method)
+	}
 
 	//解析表单
 	if err = req.ParseMultipartForm(32<<20);err!=nil{
@@ -291,6 +479,16 @@ func handleGetEntry(resp http.ResponseWriter, req *http.Request){
 	}
 
 	listID = req.PostForm.Get("listid")
+	token = req.PostForm.Get("token")
+	email = req.PostForm.Get("email")
+	//检查token
+	if isOK, err = CheckToken(email, token);err!=nil||isOK==false{
+		if isOK == false{
+			err = errors.New("Token isOK = false")
+		}
+		goto ERR
+	}
+
 	if resps, err = G_memSink.getEntryAndStep(listID);err!=nil{
 		goto ERR
 	}
@@ -322,7 +520,22 @@ func handleAddPMemList(resp http.ResponseWriter, req *http.Request){
 		email string
 		listname string
 		respData *Common.AddPMLResp
+		token string
+		isOK bool
 	)
+
+	resp.Header().Set("Access-Control-Allow-Origin", "*")
+	resp.Header().Add("Access-Control-Allow-Headers", "Content-Type")
+	resp.Header().Set("content-type", "application/json")
+	if req.Method == "OPTIONS"{
+		if bytes, err = Common.BuildUploadFileResp(0,[]string{"nil"});err==nil{
+			resp.Write(bytes)
+			fmt.Println("return Options")
+			return
+		}
+	}else{
+		fmt.Println(req.Method)
+	}
 
 	if err = req.ParseMultipartForm(32<<20);err!=nil{
 		goto ERR
@@ -330,6 +543,14 @@ func handleAddPMemList(resp http.ResponseWriter, req *http.Request){
 
 	email = req.PostForm.Get("email")
 	listname = req.PostForm.Get("listname")
+	token = req.PostForm.Get("token")
+	//检查token
+	if isOK, err = CheckToken(email, token);err!=nil||isOK==false{
+		if isOK == false{
+			err = errors.New("Token isOK = false")
+		}
+		goto ERR
+	}
 
 	if respData,  err = G_memSink.addPMemList(email, listname);err!=nil{
 		goto ERR
@@ -362,7 +583,22 @@ func handleAddTMemList(resp http.ResponseWriter, req *http.Request){
 		email string
 		listname string
 		respData *Common.AddTMLResp
+		token string
+		isOK bool
 	)
+
+	resp.Header().Set("Access-Control-Allow-Origin", "*")
+	resp.Header().Add("Access-Control-Allow-Headers", "Content-Type")
+	resp.Header().Set("content-type", "application/json")
+	if req.Method == "OPTIONS"{
+		if bytes, err = Common.BuildUploadFileResp(0,[]string{"nil"});err==nil{
+			resp.Write(bytes)
+			fmt.Println("return Options")
+			return
+		}
+	}else{
+		fmt.Println(req.Method)
+	}
 
 	if err = req.ParseMultipartForm(32<<20);err!=nil{
 		goto ERR
@@ -370,6 +606,14 @@ func handleAddTMemList(resp http.ResponseWriter, req *http.Request){
 
 	email = req.PostForm.Get("email")
 	listname = req.PostForm.Get("listname")
+	token = req.PostForm.Get("token")
+	//检查token
+	if isOK, err = CheckToken(email, token);err!=nil||isOK==false{
+		if isOK == false{
+			err = errors.New("Token isOK = false")
+		}
+		goto ERR
+	}
 
 	if respData, err = G_memSink.addTMemList(email, listname);err!=nil{
 		goto ERR
@@ -398,14 +642,38 @@ func handleGetStep(resp http.ResponseWriter, req *http.Request){
 		bytes []byte
 		entryID string
 		result []Common.Step
+		token string
+		isOK bool
+		email string
 	)
+
+	resp.Header().Set("Access-Control-Allow-Origin", "*")
+	resp.Header().Add("Access-Control-Allow-Headers", "Content-Type")
+	resp.Header().Set("content-type", "application/json")
+	if req.Method == "OPTIONS"{
+		if bytes, err = Common.BuildUploadFileResp(0,[]string{"nil"});err==nil{
+			resp.Write(bytes)
+			fmt.Println("return Options")
+			return
+		}
+	}else{
+		fmt.Println(req.Method)
+	}
 
 	if err = req.ParseMultipartForm(32<<20);err!=nil{
 		goto ERR
 	}
 
 	entryID = req.PostForm.Get("entryid")
-	fmt.Println(entryID)
+	token = req.PostForm.Get("token")
+	email = req.PostForm.Get("email")
+	//检查token
+	if isOK, err = CheckToken(email, token);err!=nil||isOK==false{
+		if isOK == false{
+			err = errors.New("Token isOK = false")
+		}
+		goto ERR
+	}
 
 	if result, err = G_memSink.getSteps(entryID);err!=nil{
 		goto ERR
@@ -440,6 +708,18 @@ func handleSaveEntry(resp http.ResponseWriter, req *http.Request){
 		entryID string
 	)
 
+	resp.Header().Set("Access-Control-Allow-Origin", "*")
+	resp.Header().Add("Access-Control-Allow-Headers", "Content-Type")
+	resp.Header().Set("content-type", "application/json")
+	if req.Method == "OPTIONS"{
+		if bytes, err = Common.BuildUploadFileResp(0,[]string{"nil"});err==nil{
+			resp.Write(bytes)
+			fmt.Println("return Options")
+			return
+		}
+	}else{
+		fmt.Println(req.Method)
+	}
 
 
 	if reqContent, err = ioutil.ReadAll(req.Body);err!=nil{
@@ -447,6 +727,14 @@ func handleSaveEntry(resp http.ResponseWriter, req *http.Request){
 	}
 
 	if err = json.Unmarshal(reqContent, &dataUnMar);err!=nil{
+		goto ERR
+	}
+
+	//检查token
+	if isOK, err = CheckToken(dataUnMar.Email, dataUnMar.Token);err!=nil||isOK==false{
+		if isOK == false{
+			err = errors.New("Token isOK = false")
+		}
 		goto ERR
 	}
 
@@ -483,13 +771,36 @@ func handleDeleteEntry(resp http.ResponseWriter, req *http.Request){
 		bytes []byte
 		entryID string
 		isOK bool
+		token string
+		email string
 	)
+
+	resp.Header().Set("Access-Control-Allow-Origin", "*")
+	resp.Header().Add("Access-Control-Allow-Headers", "Content-Type")
+	resp.Header().Set("content-type", "application/json")
+	if req.Method == "OPTIONS"{
+		if bytes, err = Common.BuildUploadFileResp(0,[]string{"nil"});err==nil{
+			resp.Write(bytes)
+			fmt.Println("return Options")
+			return
+		}
+	}else{
+		fmt.Println(req.Method)
+	}
 
 	if err = req.ParseMultipartForm(32<<20);err!=nil{
 		goto ERR
 	}
 
 	entryID = req.PostForm.Get("entryid")
+	token = req.PostForm.Get("token")
+	//检查token
+	if isOK, err = CheckToken(email, token);err!=nil||isOK==false{
+		if isOK == false{
+			err = errors.New("Token isOK = false")
+		}
+		goto ERR
+	}
 
 	if isOK , err = G_memSink.deleteEntry(entryID);err!=nil{
 		goto ERR
@@ -517,13 +828,38 @@ func handleGetMember(resp http.ResponseWriter, req *http.Request){
 		bytes []byte
 		tMemListID string
 		email Common.EmailResult
+		token string
+		isOK bool
+		emails string
 	)
+
+	resp.Header().Set("Access-Control-Allow-Origin", "*")
+	resp.Header().Add("Access-Control-Allow-Headers", "Content-Type")
+	resp.Header().Set("content-type", "application/json")
+	if req.Method == "OPTIONS"{
+		if bytes, err = Common.BuildUploadFileResp(0,[]string{"nil"});err==nil{
+			resp.Write(bytes)
+			fmt.Println("return Options")
+			return
+		}
+	}else{
+		fmt.Println(req.Method)
+	}
 
 	if err = req.ParseMultipartForm(32<<20);err!=nil{
 		goto ERR
 	}
 
 	tMemListID = req.PostForm.Get("tmemlistid")
+	token = req.PostForm.Get("token")
+	emails = req.PostForm.Get("email")
+	//检查token
+	if isOK, err = CheckToken(emails, token);err!=nil||isOK==false{
+		if isOK == false{
+			err = errors.New("Token isOK = false")
+		}
+		goto ERR
+	}
 
 	if email.Email, err = G_memSink.getTMemberByListID(tMemListID);err!=nil{
 		goto ERR
@@ -550,19 +886,44 @@ func handleAddMember(resp http.ResponseWriter, req *http.Request){
 	var(
 		tmemlistid string
 		email string
+		email_ string
 		err error
 		bytes []byte
 		isOK bool
+		token string
 	)
+
+	resp.Header().Set("Access-Control-Allow-Origin", "*")
+	resp.Header().Add("Access-Control-Allow-Headers", "Content-Type")
+	resp.Header().Set("content-type", "application/json")
+	if req.Method == "OPTIONS"{
+		if bytes, err = Common.BuildUploadFileResp(0,[]string{"nil"});err==nil{
+			resp.Write(bytes)
+			fmt.Println("return Options")
+			return
+		}
+	}else{
+		fmt.Println(req.Method)
+	}
 
 	if err = req.ParseMultipartForm(32<<20);err!=nil{
 		goto ERR
 	}
 
 	tmemlistid = req.PostForm.Get("tmemlistid")
-	email      = req.PostForm.Get("email")
+	email      = req.PostForm.Get("email") //自己的email
+	email_	   = req.PostForm.Get("email_") //添加人的email
+	token = req.PostForm.Get("token")
+	//检查token
+	if isOK, err = CheckToken(email, token);err!=nil||isOK==false{
+		if isOK == false{
+			err = errors.New("Token isOK = false")
+		}
+		goto ERR
+	}
 
-	if isOK, err = G_memSink.addTMember(tmemlistid, email);!isOK{
+
+	if isOK, err = G_memSink.addTMember(tmemlistid, email_);!isOK{
 		goto ERR
 	}
 
@@ -588,10 +949,25 @@ func handleDeleteMember(resp http.ResponseWriter, req *http.Request){
 	var(
 		tmemlistid string
 		email string
+		email_ string
 		err error
 		bytes []byte
 		isOK bool
+		token string
 	)
+
+	resp.Header().Set("Access-Control-Allow-Origin", "*")
+	resp.Header().Add("Access-Control-Allow-Headers", "Content-Type")
+	resp.Header().Set("content-type", "application/json")
+	if req.Method == "OPTIONS"{
+		if bytes, err = Common.BuildUploadFileResp(0,[]string{"nil"});err==nil{
+			resp.Write(bytes)
+			fmt.Println("return Options")
+			return
+		}
+	}else{
+		fmt.Println(req.Method)
+	}
 
 	if err = req.ParseMultipartForm(32<<20);err!=nil{
 		goto ERR
@@ -599,11 +975,17 @@ func handleDeleteMember(resp http.ResponseWriter, req *http.Request){
 
 	tmemlistid = req.PostForm.Get("tmemlistid")
 	email      = req.PostForm.Get("email")
+	email_	   = req.PostForm.Get("email_")
+	token = req.PostForm.Get("token")
+	//检查token
+	if isOK, err = CheckToken(email, token);err!=nil||isOK==false{
+		if isOK == false{
+			err = errors.New("Token isOK = false")
+		}
+		goto ERR
+	}
 
-	fmt.Println(tmemlistid)
-	fmt.Println(email)
-
-	if isOK, err = G_memSink.deleteTMember(tmemlistid, email);!isOK{
+	if isOK, err = G_memSink.deleteTMember(tmemlistid, email_);!isOK{
 		goto ERR
 	}
 
@@ -617,6 +999,121 @@ ERR:
 		resp.Write(bytes)
 	}
 }
+
+//16.删除个人清单
+func handleDeletePMemList(resp http.ResponseWriter, req *http.Request){
+
+	var(
+		err error
+		bytes []byte
+		pMemListId string
+		isok bool
+		email string
+		token string
+		isOK bool
+	)
+
+	resp.Header().Set("Access-Control-Allow-Origin", "*")
+	resp.Header().Add("Access-Control-Allow-Headers", "Content-Type")
+	resp.Header().Set("content-type", "application/json")
+	if req.Method == "OPTIONS"{
+		if bytes, err = Common.BuildUploadFileResp(0,[]string{"nil"});err==nil{
+			resp.Write(bytes)
+			fmt.Println("return Options")
+			return
+		}
+	}else{
+		fmt.Println(req.Method)
+	}
+
+	if err = req.ParseMultipartForm(32<<20);err!=nil{
+		goto ERR
+	}
+
+	pMemListId = req.PostForm.Get("pmemlistid")
+	email 	   = req.PostForm.Get("email")
+	token = req.PostForm.Get("token")
+	//检查token
+	if isOK, err = CheckToken(email, token);err!=nil||isOK==false{
+		if isOK == false{
+			err = errors.New("Token isOK = false")
+		}
+		goto ERR
+	}
+
+	if isok, err = G_memSink.deletePMemList(pMemListId);err!=nil||isok==false{
+		goto ERR
+	}
+
+	if bytes, err = Common.BuildAddTMemListResp(0, nil);err==nil{
+		resp.Write(bytes)
+	}
+
+
+	return
+	ERR:
+		if bytes, err = Common.BuildAddTMemListResp(-1, err.Error());err==nil{
+			resp.Write(bytes)
+		}
+
+
+}
+
+//17. 删除团队清单
+func handleDeleteTMemList(resp http.ResponseWriter, req *http.Request){
+	var(
+		err error
+		bytes []byte
+		tMemListId string
+		isok bool
+		email string
+		token string
+		isOK bool
+	)
+
+	resp.Header().Set("Access-Control-Allow-Origin", "*")
+	resp.Header().Add("Access-Control-Allow-Headers", "Content-Type")
+	resp.Header().Set("content-type", "application/json")
+	if req.Method == "OPTIONS"{
+		if bytes, err = Common.BuildUploadFileResp(0,[]string{"nil"});err==nil{
+			resp.Write(bytes)
+			fmt.Println("return Options")
+			return
+		}
+	}else{
+		fmt.Println(req.Method)
+	}
+
+	if err = req.ParseMultipartForm(32<<20);err!=nil{
+		goto ERR
+	}
+
+	tMemListId = req.PostForm.Get("tmemlistid")
+	token = req.PostForm.Get("token")
+	email = req.PostForm.Get("email")
+	//检查token
+	if isOK, err = CheckToken(email, token);err!=nil||isOK==false{
+		if isOK == false{
+			err = errors.New("Token isOK = false")
+		}
+		goto ERR
+	}
+
+	if isok, err = G_memSink.deleteTMemList(tMemListId);err!=nil||isok==false{
+		goto ERR
+	}
+
+	if bytes, err = Common.BuildAddTMemListResp(0, nil);err==nil{
+		resp.Write(bytes)
+	}
+
+	return
+ERR:
+	if bytes, err = Common.BuildAddTMemListResp(-1, err.Error());err==nil{
+		resp.Write(bytes)
+	}
+}
+
 
 
 //初始化服务
@@ -660,6 +1157,10 @@ func InitApiServer()(err error){
 	mux.HandleFunc("/addMember", handleAddMember)
 	//15. 删除团队成员
 	mux.HandleFunc("/deleteMember", handleDeleteMember)
+	//16. 删除个人清单
+	mux.HandleFunc("/deletePMemList", handleDeletePMemList)
+	//17. 删除团队清单
+	mux.HandleFunc("/deleteTMemList", handleDeleteTMemList)
 
 	//启动tcp监听
 	if listener, err = net.Listen("tcp", ":"+strconv.Itoa(G_config.ApiPort));err!=nil{

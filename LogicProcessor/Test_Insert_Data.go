@@ -110,7 +110,7 @@ func Insert_Data()(err error){
 		EntryID:tentryID,
 		EntryName:"test Team Member List 1",
 		ListID:tMemList_id,
-		State:0,
+		State:1,   //删除
 		Version:0,
 	});err!=nil{
 		fmt.Println(err)
@@ -125,7 +125,7 @@ func Insert_Data()(err error){
 		StepName:"test",
 		Date:"2019-03-07",
 		Importance:1,
-		Done:0,
+		Done:1,
 		Content:"AAAA",
 	});err!=nil{
 		fmt.Println(err)
@@ -135,11 +135,11 @@ func Insert_Data()(err error){
 		ID:	step_ID_2,
 		StepID: step_ID_2,
 		EntryID:entryID,
-		Sequence:0,
+		Sequence:1,
 		StepName:"test2",
 		Date:"2019-03-07",
 		Importance:1,
-		Done:0,
+		Done:1,
 		Content:"BBB",
 	});err!=nil{
 		fmt.Println(err)
@@ -149,12 +149,26 @@ func Insert_Data()(err error){
 		ID:	step_ID_3,
 		StepID: step_ID_3,
 		EntryID:entryID,
-		Sequence:0,
+		Sequence:2,
 		StepName:"test",
 		Date:"2019-03-08",
 		Importance:1,
-		Done:0,
+		Done:1,
 		Content:"CCC",
+	});err!=nil{
+		fmt.Println(err)
+	}
+
+	if err = G_memSink.MC_Step.Insert(&Common.Step{
+		ID:	step_ID_4,
+		StepID: step_ID_4,
+		EntryID:entryID_2,
+		Sequence:0,
+		StepName:step_ID_4,
+		Date:"2019-03-07",
+		Importance:1,
+		Done:0,
+		Content:"CCCBBBBB",
 	});err!=nil{
 		fmt.Println(err)
 	}
@@ -197,7 +211,22 @@ func Insert_Data()(err error){
 		StepName:"test_tmemlist_step_1",
 		Date:"2019-03-07",
 		Importance:1,
-		Done:0,
+		Done:1,
+		Content:"CCCAAA",
+	});err!=nil{
+		fmt.Println(err)
+	}
+
+	//Done = 1
+	if err = G_memSink.MC_Step.Insert(&Common.Step{
+		ID:step_Team_ID_1+"done=1",
+		StepID: step_Team_ID_1+"done=1",
+		EntryID:tentryID,
+		Sequence:1,
+		StepName:"test_tmemlist_step_done_=_1",
+		Date:"2019-03-29",
+		Importance:1,
+		Done:1,
 		Content:"CCCAAA",
 	});err!=nil{
 		fmt.Println(err)
