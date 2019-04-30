@@ -16,6 +16,7 @@ type Config struct{
 	MongodbConnectionTimeout int `json:"mongodbConnectionTimeout"`
 	NodeID 					 int64 `json:"nodeId"`
 	TokenLease  int64        `json:"tokenLease"`
+	REdirectURL string `json:"redirecturl"`
 }
 
 var(

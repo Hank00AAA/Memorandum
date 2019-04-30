@@ -24,7 +24,10 @@
   "nodeId": 1,
 
   "token过期时间": "单位是秒",
-  "tokenLease": 3600
+  "tokenLease": 3600,
+
+  "重定向url": "填写前端url",
+  "redirecturl": ":"
 
 
 }

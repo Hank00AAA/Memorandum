@@ -29,6 +29,10 @@ func handleSignUp(resp http.ResponseWriter, req *http.Request){
 		respbytes []byte
 		password string
 		email string
+		token string
+		isOK bool
+		url string
+		body string
 	)
 
 	resp.Header().Set("Access-Control-Allow-Origin", "*")
@@ -52,12 +56,39 @@ func handleSignUp(resp http.ResponseWriter, req *http.Request){
 	email = req.PostForm.Get("email")
 	password = req.PostForm.Get("password")
 
-	if err = G_memSink.SingUp(email, password);err!=nil{
+
+	if token, isOK, err  = BindEmailWithNewToken(email);err!=nil||isOK==false{
+		if isOK == false{
+			err = errors.New("绑定token失败")
+		}
 		goto ERR
 	}
 
+/*
+	if err = G_memSink.SingUp(email, password);err!=nil||isOK==false{
+		goto ERR
+	}
+*/
 
-	if respbytes, err = Common.BuildSignInResp(0, nil);err==nil{
+	//不需要发token给前端，直接发邮件给用户即可
+	//用户点击邮件后跳转到前端，前端将token，email，password发给我
+	//到时候再调用激活帐号接口写入数据库
+	//qqmail激活码:fcnevkixyahtbgbg
+
+	url = "http://"+G_config.REdirectURL+"?token="+token+"&email="+email+"&password="+password
+	fmt.Println(token)
+	fmt.Println(email)
+	fmt.Println(password)
+	fmt.Println(url)
+
+	body=url
+
+	if err = SendToMail("154630877@qq.com","fcnevkixyahtbgbg","smtp.qq.com:25", email,
+		"帐号确认注册邮件",body,"html");err!=nil{
+			goto ERR
+	}
+
+	if respbytes, err = Common.BuildSignUpResp(0, nil);err==nil{
 		resp.Write(respbytes)
 	}
 
@@ -65,10 +96,74 @@ func handleSignUp(resp http.ResponseWriter, req *http.Request){
 ERR:
 	fmt.Println(err)
 	//异常应答
-	if respbytes, err = Common.BuildSignInResp(-1, err.Error());err==nil{
+	if respbytes, err = Common.BuildSignUpResp(-1, err.Error());err==nil{
+		resp.Write(respbytes)
+	}
+}
+
+//18. 激活帐号
+//token email password
+func handleAccountActivation(resp http.ResponseWriter, req *http.Request){
+
+	var(
+		bytes []byte
+		err error
+		respbytes []byte
+		token string
+		email string
+		password string
+		isOK bool
+	)
+
+	resp.Header().Set("Access-Control-Allow-Origin", "*")
+	resp.Header().Add("Access-Control-Allow-Headers", "Content-Type")
+	resp.Header().Set("content-type", "application/json")
+	if req.Method == "OPTIONS"{
+		if bytes, err = Common.BuildUploadFileResp(0,[]string{"nil"});err==nil{
+			resp.Write(bytes)
+			fmt.Println("return Options")
+			return
+		}
+	}else{
+		fmt.Println(req.Method)
+	}
+
+	//解析表单
+	if err = req.ParseMultipartForm(32<<20);err!=nil{
+		goto ERR
+	}
+
+	token = req.PostForm.Get("token")
+	email = req.PostForm.Get("email")
+	password = req.PostForm.Get("password")
+
+	//检查token
+	if isOK, err = CheckToken(email, token);err!=nil||isOK==false{
+		if isOK == false{
+			err = errors.New("Token isOK = false")
+		}
+		goto ERR
+	}
+
+	//写入数据库
+	if err = G_memSink.SingUp(email, password);err!=nil||isOK==false{
+		goto ERR
+	}
+
+	//返回
+	if respbytes, err = Common.BuildSignUpResp(0, nil);err==nil{
 		resp.Write(respbytes)
 	}
 
+
+
+	return
+ERR:
+	fmt.Println(err)
+	//异常应答
+	if respbytes, err = Common.BuildSignUpResp(-1, err.Error());err==nil{
+		resp.Write(respbytes)
+	}
 }
 
 //2. 登陆服务接口
@@ -164,7 +259,7 @@ func handleSignIn(resp http.ResponseWriter, req *http.Request){
 		temp.PListID = plist_temp.ListID
 		temp.PListName = plist_temp.ListName
 		plist_resp = append(plist_resp, temp)
-		fmt.Println("finish",temp)
+		fmt.Println("SignIn finish",temp)
 	}
 
 	if respbytes, err = Common.BuildSignInRespWithToken(0, plist_resp, token);err==nil{
@@ -922,7 +1017,6 @@ func handleAddMember(resp http.ResponseWriter, req *http.Request){
 		goto ERR
 	}
 
-
 	if isOK, err = G_memSink.addTMember(tmemlistid, email_);!isOK{
 		goto ERR
 	}
@@ -1161,6 +1255,8 @@ func InitApiServer()(err error){
 	mux.HandleFunc("/deletePMemList", handleDeletePMemList)
 	//17. 删除团队清单
 	mux.HandleFunc("/deleteTMemList", handleDeleteTMemList)
+	//18. 激活帐号
+	mux.HandleFunc("/accountActivation", handleAccountActivation)
 
 	//启动tcp监听
 	if listener, err = net.Listen("tcp", ":"+strconv.Itoa(G_config.ApiPort));err!=nil{

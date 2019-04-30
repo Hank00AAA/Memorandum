@@ -24,6 +24,24 @@ type DataBatch struct{
 }
 
 //1. 注册接口应答
+type SignUpResp struct{
+	Errno int `json:"errno"`
+	Data  interface{} `json:"data"`
+}
+
+func BuildSignUpResp(errno int, data interface{})(resp []byte, err error){
+
+	var(
+		response SignUpResp
+	)
+
+	response.Errno = errno
+	response.Data  = data
+
+	resp, err = json.Marshal(response)
+	return
+
+}
 
 
 //2. 登陆接口应答

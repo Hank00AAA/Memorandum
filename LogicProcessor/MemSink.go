@@ -1433,7 +1433,7 @@ func InitMemSink()(err error){
 		MC_TMemList:tmemlist,
 	}
 
-	G_memSink.addPMemList("111@qq.com","11")
+	//G_memSink.addPMemList("111@qq.com","11")
 
 	//test
 	/*

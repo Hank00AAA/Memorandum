@@ -115,7 +115,7 @@ func handleUploadImage(resp http.ResponseWriter, req *http.Request){
 	}
 
 	pathRespArr = make([]string, 0)
-	pathRespArr = append(pathRespArr, "http://192.168.1.198:8980/download/"+fileMd5Name + fileExtension)
+	pathRespArr = append(pathRespArr, "http://"+G_register.localIP+":"+strconv.Itoa(G_config.ApiPort)+"/download/"+fileMd5Name + fileExtension)
 
 	//返回信息
 	if bytes, err = Common.BuildUploadFileResp(0,pathRespArr);err==nil{
